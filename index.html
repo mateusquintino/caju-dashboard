@@ -1650,4 +1650,535 @@ function renderMov(){
   const pag=document.getElementById('movPag');
   if(pages<=1){pag.innerHTML='';return}
   pag.innerHTML=`
-    <button class="bs" style="padding:4px 10px;font-size:.7rem" onclick="movPage=Math.max(1,movP
+    <button class="bs" style="padding:4px 10px;font-size:.7rem" onclick="movPage=Math.max(1,movPage-1);renderMov()" ${movPage===1?'disabled':''}>← Anterior</button>
+    <span>Pág. ${movPage} de ${pages} — ${total} registros</span>
+    <button class="bs" style="padding:4px 10px;font-size:.7rem" onclick="movPage=Math.min(${pages},movPage+1);renderMov()" ${movPage===pages?'disabled':''}>Próxima →</button>
+  `;
+}
+
+/* ═══════════════════════════════════════════════
+   SALDOS INICIAIS
+═══════════════════════════════════════════════ */
+function renderSaldos(){
+  const contas=getContas().filter(c=>c.ativo);
+  const sb=document.getElementById('siBody');
+  sb.innerHTML=contas.map(c=>`<tr>
+    <td title="${c.empresa}">${c.empresa}</td>
+    <td><span class="bmarca" style="background:${cor(c.marca)}22;color:${cor(c.marca)}">${c.marca}</span></td>
+    <td>${c.banco}</td>
+    <td class="r"><input type="number" step="0.01" value="${(c.saldoInicial||0).toFixed(2)}"
+      style="width:140px;text-align:right;background:var(--bg3);border:1px solid var(--bd);
+      border-radius:5px;padding:4px 8px;font-family:'DM Mono',monospace;font-size:.78rem;
+      color:var(--t1);transition:border-color var(--t)"
+      onchange="updateSI(${c.id},this.value)"
+      onfocus="this.style.borderColor='var(--or1)'" onblur="this.style.borderColor='var(--bd)'"/></td>
+    <td><button onclick="saveSI(${c.id})" class="bp" style="padding:4px 10px;font-size:.68rem">Salvar</button></td>
+  </tr>`).join('');
+}
+const siPend={};
+function updateSI(id,v){siPend[id]=parseFloat(v)||0}
+async function saveSI(id){
+  if(siPend[id]===undefined)return;
+  const { error }=await _SB.from('contas').update({saldo_inicial:siPend[id]}).eq('id',id);
+  if(error){toast('Erro: '+error.message,'er');return;}
+  _contas=_contas.map(c=>c.id===id?{...c,saldoInicial:siPend[id]}:c);
+  delete siPend[id];
+  renderDash();toast('Saldo inicial atualizado!','ok');
+}
+
+/* ═══════════════════════════════════════════════
+   IMPORTAR OFX
+═══════════════════════════════════════════════ */
+const pending={santander:[],itau:[]};
+
+function setupDZ(){
+  [['dzSant','flSant','fSant','santander'],['dzItau','flItau','fItau','itau']].forEach(([dId,flId,fId,banco])=>{
+    const dz=document.getElementById(dId);
+    const inp=document.getElementById(fId);
+    dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dv')});
+    dz.addEventListener('dragleave',()=>dz.classList.remove('dv'));
+    dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dv');addFiles(banco,Array.from(e.dataTransfer.files),flId)});
+    inp.addEventListener('change',()=>{addFiles(banco,Array.from(inp.files),flId);inp.value=''});
+  });
+}
+
+function addFiles(banco,files,flId){
+  const ofx=files.filter(f=>f.name.match(/\.ofx$/i));
+  if(!ofx.length){toast('Apenas arquivos .OFX são aceitos','er');return}
+  ofx.forEach(f=>{
+    if(pending[banco].find(p=>p.name===f.name))return;
+    pending[banco].push(f);
+    document.getElementById(flId).insertAdjacentHTML('beforeend',
+      `<div class="fit"><span class="fitn" title="${f.name}">${f.name}</span>
+       <span style="color:var(--t3);font-size:.65rem;flex-shrink:0">${(f.size/1024).toFixed(0)} KB</span></div>`);
+  });
+  document.getElementById('btnProc').disabled=
+    pending.santander.length+pending.itau.length===0;
+}
+
+function addLog(msg,t){
+  const lg=document.getElementById('ilog');
+  lg.style.display='block';
+  lg.insertAdjacentHTML('beforeend',`<div class="ll l${t}">${msg}</div>`);
+  lg.scrollTop=lg.scrollHeight;
+}
+
+async function processarOFX(){
+  const btn=document.getElementById('btnProc');
+  const forcar=document.getElementById('chkForce').checked;
+  btn.disabled=true;
+  addLog('Iniciando processamento'+(forcar?' (modo: forçar reimportação)':'')+'...','inf');
+  const contas=getContas();
+
+  for(const [banco,files] of Object.entries(pending)){
+    for(const file of files){
+      const text=await file.text();
+      const parsed=parseOFX(text,banco,contas);
+      if(!parsed.ok){addLog(`✗ ${file.name} — ${parsed.msg}`,'err');continue;}
+
+      let novas=parsed.txs;
+      let removidas=0;
+
+      if(forcar){
+        const fitids=parsed.txs.map(t=>t.fitid).filter(Boolean);
+        if(fitids.length && parsed.txs[0]?.contaId){
+          const { count }=await _SB.from('transacoes')
+            .delete().eq('conta_id',parsed.txs[0].contaId).in('fitid',fitids);
+          removidas=count||0;
+        }
+      } else {
+        const fitids=parsed.txs.map(t=>t.fitid).filter(Boolean);
+        if(fitids.length){
+          const { data:exist }=await _SB.from('transacoes')
+            .select('fitid').eq('conta_id',parsed.txs[0]?.contaId).in('fitid',fitids);
+          const existSet=new Set((exist||[]).map(e=>e.fitid));
+          novas=parsed.txs.filter(t=>!t.fitid||!existSet.has(t.fitid));
+        }
+      }
+
+      if(novas.length){
+        const rows=novas.map(t=>({
+          conta_id:t.contaId, data:t.data, descricao:t.desc,
+          valor:t.valor, tipo:t.tipo, fitid:t.fitid||null
+        }));
+        const { error }=await _SB.from('transacoes').insert(rows);
+        if(error){addLog(`✗ ${file.name} — Erro ao salvar: ${error.message}`,'err');continue;}
+      }
+
+      await _SB.from('importacoes').insert({
+        arquivo:file.name,
+        banco:banco.charAt(0).toUpperCase()+banco.slice(1),
+        qtd_transacoes:novas.length, status:'ok'
+      });
+
+      const msg=forcar
+        ? `✓ ${file.name} — ${novas.length} transações para "${parsed.conta}"${removidas>0?' ('+removidas+' substituídas)':''}`
+        : `✓ ${file.name} — ${novas.length} novas para "${parsed.conta}"${parsed.txs.length-novas.length>0?' ('+(parsed.txs.length-novas.length)+' duplicatas ignoradas)':''}`;
+      addLog(msg,'ok');
+    }
+  }
+
+  const [tr,ir]=await Promise.all([
+    _SB.from('transacoes').select('*').order('data',{ascending:false}),
+    _SB.from('importacoes').select('*').order('data_importacao',{ascending:false})
+  ]);
+  _tx=(tr.data||[]).map(mapTx);
+  _imps=ir.data||[];
+
+  pending.santander=[];pending.itau=[];
+  document.getElementById('flSant').innerHTML='';
+  document.getElementById('flItau').innerHTML='';
+  document.getElementById('chkForce').checked=false;
+  addLog('Processamento concluído.','inf');
+  renderHist();renderDash();renderMov();
+}
+
+function parseOFX(text,banco,contas){
+  try{
+    const acctMatch=text.match(/<ACCTID>\s*([^\r\n<]+)/i);
+    const acctNum=acctMatch?acctMatch[1].trim():'';
+    const acctDigits=acctNum.replace(/\D/g,'');
+    const bankIdMatch=text.match(/<BANKID>\s*([^\r\n<]+)/i);
+    const bankId=(bankIdMatch?bankIdMatch[1].trim().replace(/^0+/,''):'');
+    const orgMatch=text.match(/<ORG>\s*([^\r\n<]+)/i);
+    const org=(orgMatch?orgMatch[1].trim():'').toUpperCase();
+    const branchMatch=text.match(/<BRANCHID>\s*([^\r\n<]+)/i);
+    const branchId=(branchMatch?branchMatch[1].trim().replace(/\D/g,''):'');
+    const autoSantander=bankId==='33'||bankId==='033'||org.includes('SANTANDER');
+    const autoItau=bankId==='341'||org.includes('ITA');
+    const bancoNorm=banco.toLowerCase();
+    const isSantander=bancoNorm.includes('santander')||autoSantander;
+    const isItau=bancoNorm.includes('itaú')||bancoNorm.includes('itau')||autoItau;
+    let conta=null;
+    if(acctDigits){
+      conta=contas.find(c=>{
+        if(!c.ativo) return false;
+        const cb=c.banco.toLowerCase();
+        const bancoOk=isSantander ? cb.includes('santander') : (cb.includes('itaú')||cb.includes('itau'));
+        if(!bancoOk) return false;
+        if(!c.conta) return false;
+        const contaDigits=c.conta.replace(/\D/g,'');
+        return acctDigits.endsWith(contaDigits)||acctDigits===contaDigits;
+      });
+    }
+    if(!conta && acctDigits && isSantander){
+      conta=contas.find(c=>{
+        if(!c.ativo||!c.agencia) return false;
+        const cb=c.banco.toLowerCase();
+        if(!cb.includes('santander')) return false;
+        return acctDigits.startsWith(c.agencia.replace(/\D/g,''));
+      });
+    }
+    if(!conta && branchId && isItau){
+      conta=contas.find(c=>{
+        if(!c.ativo||!c.agencia) return false;
+        const cb=c.banco.toLowerCase();
+        if(!cb.includes('itaú')&&!cb.includes('itau')) return false;
+        return branchId===c.agencia.replace(/\D/g,'');
+      });
+    }
+    if(!conta){
+      conta=contas.find(c=>{
+        if(!c.ativo) return false;
+        const cb=c.banco.toLowerCase();
+        if(isSantander) return cb.includes('santander');
+        if(isItau) return cb.includes('itaú')||cb.includes('itau');
+        return false;
+      });
+    }
+    if(!conta){
+      conta=contas.find(c=>{
+        if(!c.ativo) return false;
+        const cb=c.banco.toLowerCase();
+        const bn=bancoNorm;
+        return cb.includes(bn)||bn.includes(cb.replace(/itaú/,'itau'));
+      });
+    }
+    if(!conta) return {ok:false,msg:`Nenhuma conta ${banco} cadastrada. Cadastre antes de importar.`};
+    const txBlocks=[...text.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi)];
+    const txs=[];
+    const _REND=/^rendimento\b|juros\s+cr[eé]d|rendimento\s+(cdb|poupan|lci|lca)|cdb\s+rendimento/i;
+    const _TRF=/transfer[eê]ncia\s+entre\s+contas/i;
+    const campo=(bl,tag)=>{
+      const m=bl.match(new RegExp('<'+tag+'>\\s*([^\\r\\n<]+)','i'));
+      return m?m[1].trim():'';
+    };
+    const parseBRL=s=>{
+      const str=(s||'0').trim();
+      if(str.includes(',')) return parseFloat(str.replace(/\./g,'').replace(',','.'));
+      return parseFloat(str);
+    };
+    const _CONTAMAX=/contamax/i;
+    const _SALDO_ANT=/saldo\s+anterior/i;
+    for(const b of txBlocks){
+      const bl=b[1];
+      const fitid=campo(bl,'FITID');
+      const dtRaw=campo(bl,'DTPOSTED').replace(/[^\d]/g,'').slice(0,8);
+      const valorStr=campo(bl,'TRNAMT');
+      const valor=parseBRL(valorStr);
+      const memo=campo(bl,'MEMO');
+      const name=campo(bl,'NAME');
+      if(!dtRaw||dtRaw.length<8) continue;
+      if(isNaN(valor)) continue;
+      if(valor===0) continue;
+      const data=`${dtRaw.slice(0,4)}-${dtRaw.slice(4,6)}-${dtRaw.slice(6,8)}`;
+      const desc=(memo||name||'').replace(/\s+/g,' ').trim();
+      if(_CONTAMAX.test(desc)) continue;
+      if(_SALDO_ANT.test(desc)) continue;
+      let tipo=valor>=0?'receita':'despesa';
+      if(_REND.test(desc)) tipo='rendimento';
+      else if(_TRF.test(desc)) tipo='transferencia';
+      txs.push({contaId:conta.id, fitid:fitid||null, data, desc, valor, tipo});
+    }
+    return {ok:true, txs, conta:conta.empresa, acctid:acctNum, msg:''};
+  }catch(e){
+    return {ok:false, msg:'Erro ao ler OFX: '+e.message};
+  }
+}
+
+function renderHist(){
+  const imps=getImps();
+  const hb=document.getElementById('histBody');
+  if(!imps.length){hb.innerHTML=`<tr><td colspan="5" class="ecel">Nenhuma importação registrada.</td></tr>`;return}
+  hb.innerHTML=imps.slice(0,50).map(i=>`<tr>
+    <td style="font-family:'DM Mono',monospace;font-size:.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${i.arquivo}">${i.arquivo}</td>
+    <td>${i.banco}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:.7rem">${i.data_importacao ? new Date(i.data_importacao).toLocaleString('pt-BR') : ''}</td>
+    <td class="r">${i.qtd_transacoes}</td>
+    <td><span class="bok">${i.status==='ok'?'✓ OK':'✗ Erro'}</span></td>
+  </tr>`).join('');
+}
+
+/* ═══════════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════════ */
+function openMod(){
+  document.getElementById('modTit').textContent='Nova Conta Bancária';
+  document.getElementById('fId').value='';
+  document.getElementById('fEmp').value='';
+  document.getElementById('fMrc').value='';
+  document.getElementById('fBnk').value='';
+  document.getElementById('fAg').value='';
+  document.getElementById('fCt').value='';
+  document.getElementById('modConta').classList.add('op');
+}
+function closeMod(){document.getElementById('modConta').classList.remove('op')}
+
+/* ═══════════════════════════════════════════════
+   TABS + ROUTING
+═══════════════════════════════════════════════ */
+const pageRenders={
+  dashboard:renderDash,
+  contas:renderContas,
+  movimentacoes:()=>{renderMov()},
+  saldos:renderSaldos,
+  importar:renderHist,
+  usuarios:renderUsuarios
+};
+
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+    btn.classList.add('on');
+    const p=btn.dataset.p;
+    document.getElementById('page-'+p).classList.add('on');
+    if(pageRenders[p])pageRenders[p]();
+  });
+});
+
+/* ═══════════════════════════════════════════════
+   TEMA
+═══════════════════════════════════════════════ */
+function initTema(){
+  const saved=localStorage.getItem('cj_theme')||'dark';
+  document.documentElement.setAttribute('data-theme',saved);
+  document.getElementById('tglBtn').addEventListener('click',()=>{
+    const cur=document.documentElement.getAttribute('data-theme');
+    const nxt=cur==='dark'?'light':'dark';
+    document.documentElement.setAttribute('data-theme',nxt);
+    localStorage.setItem('cj_theme',nxt);
+    renderDash();
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   PERÍODO
+═══════════════════════════════════════════════ */
+function getPerLabel(per){
+  const hoje=new Date();
+  const ontem=new Date(hoje); ontem.setDate(hoje.getDate()-1);
+  const semIni=new Date(hoje); semIni.setDate(hoje.getDate()-hoje.getDay());
+  const fmtDia=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  const fmtMes=d=>d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  if(per==='dia')    return hoje.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
+  if(per==='ontem')  return 'ontem, '+fmtDia(ontem);
+  if(per==='semana') return fmtDia(semIni)+' – '+fmtDia(hoje);
+  if(per==='ano')    return String(hoje.getFullYear());
+  if(per==='custom'){
+    const fmtISO=s=>{ const [y,m,d]=s.split('-'); return new Date(+y,+m-1,+d).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}); };
+    if(dataRangeIni&&dataRangeFim) return fmtISO(dataRangeIni)+' – '+fmtISO(dataRangeFim);
+    if(dataRangeIni) return 'a partir de '+fmtISO(dataRangeIni);
+    if(dataRangeFim) return 'até '+fmtISO(dataRangeFim);
+  }
+  return fmtMes(hoje);
+}
+
+function onSelPeriodo(val){
+  currentPer=val;
+  dataRangeIni=null; dataRangeFim=null;
+  document.getElementById('pdtIni').value='';
+  document.getElementById('pdtFim').value='';
+  document.getElementById('pdtIni').classList.remove('on');
+  document.getElementById('pdtFim').classList.remove('on');
+  document.getElementById('pdate').textContent=getPerLabel(currentPer);
+  renderDash();
+}
+
+function aplicarPeriodoCustom(){
+  const ini=document.getElementById('pdtIni').value;
+  const fim=document.getElementById('pdtFim').value;
+  if(!ini&&!fim) return;
+  if(ini&&fim&&ini>fim){
+    toast('A data inicial não pode ser maior que a data final.','er'); return;
+  }
+  dataRangeIni=ini||null;
+  dataRangeFim=fim||null;
+  currentPer='custom';
+  const sel=document.getElementById('selPeriodo');
+  if(sel) sel.selectedIndex=-1;
+  document.getElementById('pdtIni').classList.toggle('on',!!ini);
+  document.getElementById('pdtFim').classList.toggle('on',!!fim);
+  document.getElementById('pdate').textContent=getPerLabel('custom');
+  renderDash();
+}
+
+document.getElementById('btnPdtApply').addEventListener('click', aplicarPeriodoCustom);
+['pdtIni','pdtFim'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown',e=>{ if(e.key==='Enter') aplicarPeriodoCustom(); });
+});
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════
+   LIMPAR BANCO DE DADOS
+═══════════════════════════════════════════════ */
+function limparBD(){
+  const mod=document.getElementById('modLimpar');
+  document.getElementById('chkConfLimpar').checked=false;
+  document.getElementById('btnConfLimpar').disabled=true;
+  document.getElementById('btnConfLimpar').style.opacity='.4';
+  document.getElementById('btnConfLimpar').style.cursor='not-allowed';
+  mod.style.display='flex';
+  setTimeout(()=>mod.classList.add('op'),10);
+}
+
+async function executarLimpar(){
+  if(!document.getElementById('chkConfLimpar').checked) return;
+  const { error }=await _SB.rpc('limpar_dados');
+  if(error){toast('Erro ao limpar: '+error.message,'er');return;}
+  await loadAllData();
+  const mod=document.getElementById('modLimpar');
+  mod.classList.remove('op');
+  mod.style.display='none';
+  renderDash();renderMov();renderHist();renderSaldos();
+  toast('Banco de dados limpo com sucesso!','ok');
+}
+
+function initApp(){
+  initTema();
+  document.getElementById('pdate').textContent=getPerLabel(currentPer);
+  setupDZ();
+  document.getElementById('fMarca').addEventListener('change',renderTabela);
+  document.getElementById('fBanco').addEventListener('change',renderTabela);
+  document.getElementById('rbtn').addEventListener('click',renderDash);
+  document.getElementById('btnNova').addEventListener('click',openMod);
+  document.getElementById('modCl').addEventListener('click',closeMod);
+  document.getElementById('modCanc').addEventListener('click',closeMod);
+  document.getElementById('modConta').addEventListener('click',e=>{if(e.target===document.getElementById('modConta'))closeMod()});
+  document.getElementById('modSave').addEventListener('click',salvarConta);
+  document.getElementById('btnProc').addEventListener('click',processarOFX);
+  renderPendingBadge();
+  renderDash();
+}
+
+document.addEventListener('DOMContentLoaded', async ()=>{
+  document.getElementById('chkConfLimpar').addEventListener('change',function(){
+    const btn=document.getElementById('btnConfLimpar');
+    btn.disabled=!this.checked;
+    btn.style.opacity=this.checked?'1':'.4';
+    btn.style.cursor=this.checked?'pointer':'not-allowed';
+  });
+  const autenticado = await Auth.init();
+  if(autenticado){
+    await loadAllData();
+    initApp();
+  }
+});
+
+// Auto-refresh a cada 2h
+setInterval(renderDash,2*60*60*1000);
+
+// Responsivo: envolvendo tabelas com scroll horizontal no mobile
+document.querySelectorAll('.twrap').forEach(tw=>{
+  if(!tw.querySelector('.twrap-scroll')){
+    const table=tw.querySelector('table');
+    if(table){
+      const div=document.createElement('div');
+      div.className='twrap-scroll';
+      tw.insertBefore(div,table);
+      div.appendChild(table);
+    }
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   INTEGRAÇÃO COM SERVIDOR DE AUTOMAÇÃO OFX (localhost:5001)
+   Se o servidor estiver rodando, importa OFX automaticamente.
+═══════════════════════════════════════════════════════════════ */
+const AUTO_URL = 'http://localhost:5001';
+let autoConectado = false;
+let ofxJaImportados = new Set(JSON.parse(localStorage.getItem('cj_auto_importados')||'[]'));
+
+function salvarImportados(){
+  localStorage.setItem('cj_auto_importados', JSON.stringify([...ofxJaImportados]));
+}
+
+function setBadge(estado){
+  const badge = document.getElementById('autoBadge');
+  const txt   = document.getElementById('autoTxt');
+  badge.className = 'auto-badge ' + estado;
+  if(estado === 'on')       txt.textContent = 'Auto ON';
+  else if(estado === 'err') txt.textContent = 'Auto OFF';
+  else                      txt.textContent = 'Auto OFX';
+}
+
+async function verificarServidor(){
+  try {
+    const r = await fetch(AUTO_URL+'/api/status', {signal: AbortSignal.timeout(3000)});
+    if(!r.ok) throw new Error('status '+r.status);
+    autoConectado = true;
+    setBadge('on');
+    await importarNovosOFX();
+  } catch {
+    autoConectado = false;
+    setBadge('err');
+  }
+}
+
+async function importarNovosOFX(){
+  try {
+    const r = await fetch(AUTO_URL+'/api/ofx');
+    const dados = await r.json();
+    const novos = dados.arquivos.filter(a => !ofxJaImportados.has(a.nome));
+    if(!novos.length) return;
+    let importados = 0;
+    for(const arq of novos){
+      try {
+        const resp = await fetch(`${AUTO_URL}/api/ofx/${encodeURIComponent(arq.nome)}`);
+        const texto = await resp.text();
+        const banco = arq.banco;
+        const contas = getContas();
+        const res = parseOFX(texto, banco, contas);
+        if(res.ok && res.txs && res.txs.length){
+          const fitids = res.txs.map(t=>t.fitid).filter(Boolean);
+          let novasTx = res.txs;
+          if(fitids.length && res.txs[0]?.contaId){
+            const { data:exist } = await _SB.from('transacoes')
+              .select('fitid').eq('conta_id', res.txs[0].contaId).in('fitid', fitids);
+            const existSet = new Set((exist||[]).map(e=>e.fitid));
+            novasTx = res.txs.filter(t=>!t.fitid||!existSet.has(t.fitid));
+          }
+          if(novasTx.length){
+            await _SB.from('transacoes').insert(novasTx.map(t=>({
+              conta_id:t.contaId, data:t.data, descricao:t.desc,
+              valor:t.valor, tipo:t.tipo, fitid:t.fitid||null
+            })));
+            await _SB.from('importacoes').insert({
+              arquivo:arq.nome, banco, qtd_transacoes:novasTx.length, status:'ok'
+            });
+          }
+          ofxJaImportados.add(arq.nome);
+          importados++;
+        }
+      } catch(e){
+        console.warn('Erro ao importar', arq.nome, e);
+      }
+    }
+    salvarImportados();
+    if(importados > 0){
+      renderDash();
+      toast(`✓ Auto-importados ${importados} OFX(s) novos`);
+    }
+  } catch(e){
+    console.warn('Erro ao buscar lista OFX:', e);
+  }
+}
+
+// Verifica o servidor ao carregar e a cada 2 horas
+verificarServidor();
+setInterval(verificarServidor, 2*60*60*1000);
+</script>
+</body>
+</html>
