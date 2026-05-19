@@ -1104,10 +1104,9 @@ const Auth = {
   },
 
   async init(){
-    // Verifica se existe algum admin cadastrado
-    const { data: admins } = await _SB.from('profiles')
-      .select('id').eq('role','admin').eq('status','active').limit(1);
-    if(!admins || admins.length === 0){ authShowScreen('setup'); return false; }
+    // Verifica se existe algum admin cadastrado (via RPC para evitar recursão RLS)
+    const { data: hasAdmin } = await _SB.rpc('has_active_admin');
+    if(!hasAdmin){ authShowScreen('setup'); return false; }
 
     // Verifica sessão ativa
     const { data:{ session } } = await _SB.auth.getSession();
