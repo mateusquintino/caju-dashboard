@@ -863,7 +863,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
   <section class="page" id="page-importar">
     <div class="imp-hdr">
       <h2>Importar Arquivos OFX</h2>
-      <p>Arraste os arquivos OFX do Santander e Itaú ou clique para selecionar. Os dados são salvos localmente no navegador.</p>
+      <p>Arraste os arquivos OFX do Santander e Itaú ou clique para selecionar. As transações são salvas no banco de dados Supabase.</p>
     </div>
     <div class="imp-zones">
       <div class="dzone" id="dzSant">
@@ -2088,6 +2088,7 @@ function addLog(msg,t){
 async function processarOFX(){
   const btn=document.getElementById('btnProc');
   const forcar=document.getElementById('chkForce').checked;
+  const LOTE=500; // tamanho máximo por batch de insert
   btn.disabled=true;
   addLog('Iniciando processamento'+(forcar?' (modo: forçar reimportação)':'')+'...','inf');
   const contas=getContas();
@@ -2098,50 +2099,60 @@ async function processarOFX(){
       const parsed=parseOFX(text,banco,contas);
       if(!parsed.ok){addLog(`✗ ${file.name} — ${parsed.msg}`,'err');continue;}
 
-      let novas=parsed.txs;
+      const total=parsed.txs.length;
+      addLog(`${file.name} — ${total} transações encontradas...`,'inf');
+
+      const rows=parsed.txs.map(t=>({
+        conta_id:t.contaId, data:t.data, descricao:t.desc,
+        valor:t.valor, tipo:t.tipo, fitid:t.fitid||null
+      }));
+
       let removidas=0;
+      let erroFatal=null;
 
       if(forcar){
+        // Remove existentes em lotes (evita URL longa)
         const fitids=parsed.txs.map(t=>t.fitid).filter(Boolean);
-        if(fitids.length && parsed.txs[0]?.contaId){
-          const { count }=await _SB.from('transacoes')
-            .delete().eq('conta_id',parsed.txs[0].contaId).in('fitid',fitids);
-          removidas=count||0;
+        if(fitids.length && rows[0]?.conta_id){
+          for(let i=0;i<fitids.length;i+=LOTE){
+            const {count}=await _SB.from('transacoes')
+              .delete().eq('conta_id',rows[0].conta_id).in('fitid',fitids.slice(i,i+LOTE));
+            removidas+=(count||0);
+          }
+        }
+        // Insere tudo em lotes
+        for(let i=0;i<rows.length;i+=LOTE){
+          const {error}=await _SB.from('transacoes').insert(rows.slice(i,i+LOTE));
+          if(error){erroFatal=error;break;}
+          if(rows.length>LOTE) addLog(`  ${Math.min(i+LOTE,rows.length)}/${rows.length}...`,'inf');
         }
       } else {
-        const fitids=parsed.txs.map(t=>t.fitid).filter(Boolean);
-        if(fitids.length){
-          const { data:exist }=await _SB.from('transacoes')
-            .select('fitid').eq('conta_id',parsed.txs[0]?.contaId).in('fitid',fitids);
-          const existSet=new Set((exist||[]).map(e=>e.fitid));
-          novas=parsed.txs.filter(t=>!t.fitid||!existSet.has(t.fitid));
+        // upsert com ignoreDuplicates = banco deduplica sem round-trip extra
+        for(let i=0;i<rows.length;i+=LOTE){
+          const {error}=await _SB.from('transacoes')
+            .upsert(rows.slice(i,i+LOTE),{onConflict:'conta_id,fitid',ignoreDuplicates:true});
+          if(error){erroFatal=error;break;}
+          if(rows.length>LOTE) addLog(`  ${Math.min(i+LOTE,rows.length)}/${rows.length}...`,'inf');
         }
       }
 
-      if(novas.length){
-        const rows=novas.map(t=>({
-          conta_id:t.contaId, data:t.data, descricao:t.desc,
-          valor:t.valor, tipo:t.tipo, fitid:t.fitid||null
-        }));
-        const { error }=await _SB.from('transacoes').insert(rows);
-        if(error){addLog(`✗ ${file.name} — Erro ao salvar: ${error.message}`,'err');continue;}
-      }
+      if(erroFatal){addLog(`✗ ${file.name} — Erro: ${erroFatal.message}`,'err');continue;}
 
       await _SB.from('importacoes').insert({
         arquivo:file.name,
         banco:banco.charAt(0).toUpperCase()+banco.slice(1),
-        qtd_transacoes:novas.length, status:'ok'
+        qtd_transacoes:total, status:'ok'
       });
 
-      const msg=forcar
-        ? `✓ ${file.name} — ${novas.length} transações para "${parsed.conta}"${removidas>0?' ('+removidas+' substituídas)':''}`
-        : `✓ ${file.name} — ${novas.length} novas para "${parsed.conta}"${parsed.txs.length-novas.length>0?' ('+(parsed.txs.length-novas.length)+' duplicatas ignoradas)':''}`;
-      addLog(msg,'ok');
+      const extra=forcar&&removidas>0?` (${removidas} substituídas)`:'';
+      addLog(`✓ ${file.name} — ${total} transações importadas para "${parsed.conta}"${extra}`,'ok');
     }
   }
 
+  // Recarrega dados — transações com limite para não sobrecarregar
+  addLog('Recarregando dados...','inf');
   const [tr,ir]=await Promise.all([
-    _SB.from('transacoes').select('*').order('data',{ascending:false}),
+    _SB.from('transacoes').select('*').order('data',{ascending:false}).limit(5000),
     _SB.from('importacoes').select('*').order('data_importacao',{ascending:false})
   ]);
   _tx=(tr.data||[]).map(mapTx);
@@ -2151,7 +2162,7 @@ async function processarOFX(){
   document.getElementById('flSant').innerHTML='';
   document.getElementById('flItau').innerHTML='';
   document.getElementById('chkForce').checked=false;
-  addLog('Processamento concluído.','inf');
+  addLog('Concluído!','inf');
   renderHist();renderDash();renderMov();
 }
 
