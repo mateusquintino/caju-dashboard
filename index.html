@@ -13,7 +13,7 @@
   --or1:#E8430A;--or2:#F5853A;
   --glow:rgba(232,67,10,.22);--glow2:rgba(245,133,58,.10);
   --c-caju:#E8430A;--c-cpd:#EC4899;--c-foster:#3B82F6;
-  --c-caminito:#10B981;--c-nazo:#8B5CF6;
+  --c-caminito:#10B981;--c-nazo:#8B5CF6;--c-responsa:#06B6D4;
   --t:200ms cubic-bezier(.4,0,.2,1)
 }
 [data-theme="dark"]{
@@ -81,6 +81,10 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
 
 /* ── PERIOD BAR ── */
 .pbar{display:flex;align-items:center;gap:10px;margin-bottom:1.6rem;flex-wrap:wrap}
+/* Select empresa — tamanho base */
+.pdt--emp{height:28px;padding:4px 8px;min-width:140px}
+/* Container responsivo de gráficos */
+.chart-wrap{position:relative;width:100%;height:260px}
 .plbl{font-size:.7rem;color:var(--t3);font-weight:600}
 /* botão → do período customizado */
 .pbt{background:var(--bg3);border:1px solid var(--bd);border-radius:5px;padding:4px 11px;
@@ -146,6 +150,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
 .mcard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
   background:var(--mc,var(--or1));border-radius:12px 12px 0 0}
 .mcard:hover{transform:translateY(-3px);box-shadow:var(--sh);border-color:var(--mc,var(--or1))}
+.mcard.active{border-color:var(--mc,var(--or1))!important;box-shadow:0 0 0 2px var(--mc,var(--or1)),var(--sh);transform:translateY(-2px)}
 .mtag{font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
   color:var(--mc,var(--t3));margin-bottom:.5rem}
 .mval{font-family:'DM Mono',monospace;font-size:1.05rem;color:var(--t1);line-height:1.2}
@@ -279,117 +284,189 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
 .tst.ok{border-color:#10B981;color:#10B981}
 .tst.er{border-color:#EF4444;color:#EF4444}
 
-@media(max-width:1100px){.mgrid{grid-template-columns:repeat(3,1fr)}.kgrid{grid-template-columns:1fr 1fr 1fr}}
-/* ═══════════════════════════════════════════
-   RESPONSIVO — MOBILE (≤ 768px)
-═══════════════════════════════════════════ */
+@media(max-width:1100px){
+  .mgrid{grid-template-columns:repeat(3,1fr)}
+  .kgrid{grid-template-columns:1fr 1fr 1fr}
+}
+
+/* ═══════════════════════════════════════════════
+   TABLET  769px – 1024px
+═══════════════════════════════════════════════ */
+@media(min-width:769px) and (max-width:1024px){
+  .main{padding:1.25rem 1rem}
+  .kgrid{grid-template-columns:1fr 1fr;gap:.75rem}
+  .kcard.ktotal{grid-column:1/-1}
+  .mgrid{grid-template-columns:repeat(3,1fr);gap:.75rem}
+  .dtbl{font-size:.8rem}
+  .pbar{flex-wrap:wrap;gap:8px}
+  .pdt-wrap{flex:1;min-width:180px}
+  #selPeriodo{min-width:120px}
+  /* user badge — esconde nome, mantém avatar + cargo */
+  .user-nome{display:none}
+  /* charts */
+  .chart-wrap{height:220px}
+  /* empresa select */
+  .pdt--emp{min-width:0;width:100%}
+  .pdt-wrap--emp{flex:1 1 180px}
+  /* auth */
+  .auth-card{max-width:400px}
+  /* usr stats */
+  .usr-stats{flex-wrap:wrap}
+}
+
+/* ═══════════════════════════════════════════════
+   MOBILE  ≤ 768px
+═══════════════════════════════════════════════ */
 @media(max-width:768px){
 
-  /* HTML base */
   html{font-size:13px}
 
-  /* HEADER */
+  /* ── HEADER ── */
   .hdr{
-    padding:0 .9rem;
+    padding:.5rem .85rem;
     height:auto;
     flex-wrap:wrap;
-    gap:.5rem;
-    padding-top:.55rem;
-    padding-bottom:.55rem;
+    gap:.4rem;
   }
-  .logo svg{height:34px}
+  .logo svg{height:30px}
+  .hdr-r{gap:5px;order:2;margin-left:auto}
+  /* User badge compacto: só avatar + cargo */
+  .user-badge{padding:3px 8px;gap:5px}
+  .user-nome{display:none}
+  .user-avatar{width:26px;height:26px;font-size:.7rem}
+  /* Abas — linha separada com scroll */
   .tabs{
     order:3;width:100%;
     overflow-x:auto;-webkit-overflow-scrolling:touch;
-    scrollbar-width:none;gap:2px;
+    scrollbar-width:none;
     border-top:1px solid var(--bd);
-    padding-top:.4rem;
-    padding-bottom:.2rem;
+    padding:.35rem 0 .2rem;
+    gap:2px;
   }
   .tabs::-webkit-scrollbar{display:none}
-  .tab{padding:5px 10px;font-size:.68rem;white-space:nowrap}
-  .hdr-r{gap:6px}
-  .auto-badge{display:none}
-  .upd{display:none}
+  .tab{padding:5px 10px;font-size:.67rem;white-space:nowrap}
+  .auto-badge,.upd{display:none}
 
-  /* MAIN */
-  .main{padding:1rem .9rem}
+  /* ── MAIN ── */
+  .main{padding:.85rem .85rem}
 
-  /* PERIOD BAR */
-  .pbar{gap:6px;margin-bottom:1.2rem}
-  .pbt{padding:4px 9px;font-size:.67rem}
-  .pdt-wrap{width:100%}
-  .rbtn{margin-left:0}
-
-  /* KPI GRID — 2 colunas no mobile */
-  .kgrid{grid-template-columns:1fr 1fr;gap:.65rem;margin-bottom:1.5rem}
-  .kcard{padding:1rem 1.1rem}
-  .kval{font-size:1.25rem}
-  .ktotal .kval{font-size:1.5rem}
-  .klbl{font-size:.6rem;margin-bottom:.4rem}
-  .ksub{font-size:.65rem}
-
-  /* SEÇÃO HEADERS */
-  .shdr{margin-bottom:.9rem}
-  .fwrap{flex-wrap:wrap;gap:5px}
-  .fsel{font-size:.68rem;padding:4px 7px}
-
-  /* MARCAS — 2 colunas */
-  .mgrid{grid-template-columns:repeat(2,1fr);gap:.7rem;margin-bottom:1.5rem}
-  .mval{font-size:.92rem}
-
-  /* TABELAS — scroll horizontal */
-  .twrap{border-radius:10px;overflow:hidden;margin-bottom:1.5rem}
-  .twrap-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .dtbl{table-layout:auto;min-width:600px}
-  .dtbl thead th{font-size:.55rem;padding:8px 10px}
-  .dtbl tbody td{font-size:.72rem;padding:9px 10px}
-
-  /* KPIs de seção */
-  .kcard.ktotal{grid-column:1/-1} /* saldo total ocupa linha inteira */
-
-  /* FILTROS MOVIMENTAÇÕES */
-  .mov-filters{gap:6px}
-  .mov-filters input,.mov-filters select{font-size:.7rem;padding:5px 8px;width:100%}
-
-  /* IMPORT PAGE */
-  .imp-zones{grid-template-columns:1fr;gap:.9rem}
-  .imp-hdr h2{font-size:1rem}
-  .imp-hdr p{font-size:.78rem}
-  .dzone{padding:1.3rem}
-
-  /* MODAL */
-  .mod{width:96vw;padding:1.25rem;border-radius:14px}
-  .mbd{gap:.9rem}
-  .mfr{flex-direction:column;gap:.9rem}
-  .mft label{font-size:.68rem}
-  .fi2{font-size:.82rem;padding:8px 10px}
-
-  /* SALDO INICIAL */
-  .si-info{padding:1rem;font-size:.78rem}
-
-  /* CHART */
-  #chartRxD{max-height:180px}
-
-  /* PERÍODO BAR — esconde label em telas muito pequenas */
+  /* ── PERIOD BAR ── */
+  .pbar{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+    margin-bottom:1.1rem;
+  }
+  #selPeriodo{grid-column:1/2;width:100%;min-width:0}
+  .pdt-wrap{grid-column:span 2;display:flex;align-items:center;gap:5px;width:100%}
+  .pdt-wrap .pdt{flex:1;min-width:0}
+  .pdate{grid-column:1/2;font-size:.7rem}
+  .rbtn{grid-column:2/3;justify-self:end;margin-left:0}
+  /* filtro empresa */
+  .pdt--emp{width:100%!important;min-width:0!important;height:32px}
+  .pdt-wrap--emp{grid-column:span 2;width:100%}
   .plbl{display:none}
+
+  /* ── KPIs ── */
+  .kgrid{grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1.2rem}
+  .kcard{padding:.85rem 1rem}
+  .kcard.ktotal{grid-column:1/-1}
+  .kval{font-size:1.2rem}
+  .ktotal .kval{font-size:1.45rem}
+  .klbl{font-size:.59rem;margin-bottom:.35rem}
+  .ksub{font-size:.62rem}
+  .kbadge{font-size:.58rem}
+
+  /* ── SECTION HEADERS ── */
+  .shdr{margin-bottom:.8rem;gap:8px}
+  .stit{font-size:.6rem}
+  .fwrap{flex-wrap:wrap;gap:5px}
+  .fsel{font-size:.67rem;padding:4px 7px;min-width:0;flex:1}
+
+  /* ── MARCA CARDS ── */
+  .mgrid{grid-template-columns:repeat(2,1fr);gap:.6rem;margin-bottom:1.3rem}
+  .mval{font-size:.9rem}
+  .mcts{font-size:.6rem}
+  .mtag{font-size:.57rem}
+
+  /* ── CHARTS ── */
+  .chart-wrap{height:180px}
+  #chartEmpilhado{max-height:220px}
+  /* ── EMPRESA SELECT ── */
+  .pdt--emp{height:32px;min-width:0;width:100%}
+  .pdt-wrap--emp{grid-column:span 2;width:100%}
+
+  /* ── TABELAS ── */
+  .twrap{border-radius:9px;overflow:hidden;margin-bottom:1.3rem}
+  .twrap-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* Tabelas de dados com scroll — min-width fixo */
+  .twrap-scroll .dtbl{table-layout:auto;min-width:540px}
+  /* Tabelas de usuários — se adaptam sem scroll */
+  #tbAtivos,.dtbl[style*="table-layout:auto"]{min-width:0}
+  .dtbl thead th{font-size:.53rem;padding:7px 9px}
+  .dtbl tbody td{font-size:.7rem;padding:8px 9px}
+
+  /* ── FILTROS MOV ── */
+  .mov-filters{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .mov-filters input,.mov-filters select{font-size:.7rem;padding:5px 8px;width:100%}
+  .mov-filters button{grid-column:1/-1}
+
+  /* ── SALDOS INICIAIS ── */
+  .si-info{padding:.9rem;font-size:.76rem}
+
+  /* ── IMPORT ── */
+  .imp-zones{grid-template-columns:1fr;gap:.8rem}
+  .imp-hdr h2{font-size:.95rem}
+  .imp-hdr p{font-size:.76rem}
+  .dzone{padding:1.2rem}
+  .imp-act{flex-direction:column;align-items:stretch}
+  .imp-act .bp,.imp-act .reimp-chk{width:100%;justify-content:center}
+
+  /* ── MODAL ── */
+  .mod{width:96vw;max-width:none}
+  .mhd{padding:.9rem 1.1rem}
+  .mbd{padding:1.1rem;gap:.85rem}
+  .mfo{padding:.9rem 1.1rem}
+  .mfr{grid-template-columns:1fr;gap:.85rem}
+  .mft label{font-size:.66rem}
+  .fi2{font-size:.8rem;padding:7px 10px}
+
+  /* ── USUÁRIOS ── */
+  .usr-stats{flex-wrap:wrap;gap:.6rem}
+  .usr-kpi{min-width:calc(50% - .3rem);flex:1}
+  .usr-kpi-val{font-size:1.2rem}
+  .cpage-hdr{flex-wrap:wrap;gap:.5rem}
+  .cpage-hdr h2{font-size:.9rem}
+
+  /* ── AUTH SCREENS ── */
+  .auth-card{padding:1.75rem 1.25rem;max-width:100%;margin:.5rem}
+  .auth-title{font-size:.95rem}
+  .auth-sub{font-size:.72rem}
+  .auth-field input{font-size:.82rem;padding:8px 10px}
 }
 
-/* MOBILE XS (≤ 400px) */
-@media(max-width:400px){
-  .kgrid{grid-template-columns:1fr}
+/* ═══════════════════════════════════════════════
+   MOBILE XS  ≤ 420px
+═══════════════════════════════════════════════ */
+@media(max-width:420px){
+  html{font-size:12px}
+  .hdr{padding:.45rem .7rem}
+  .logo svg{height:27px}
+  .main{padding:.75rem .7rem}
+  .kgrid{grid-template-columns:1fr;gap:.55rem}
   .kcard.ktotal{grid-column:auto}
-  .mgrid{grid-template-columns:1fr}
-  .tab{font-size:.65rem;padding:4px 8px}
-  .kval{font-size:1.15rem}
-}
-
-/* TABLET (769px – 1024px) */
-@media(min-width:769px) and (max-width:1024px){
-  .kgrid{grid-template-columns:1fr 1fr 1fr 1fr;gap:.7rem}
-  .mgrid{grid-template-columns:repeat(3,1fr)}
-  .main{padding:1.4rem 1.2rem}
-  .dtbl{font-size:.82rem}
+  .mgrid{grid-template-columns:1fr 1fr}
+  .tab{font-size:.64rem;padding:4px 8px}
+  .kval{font-size:1.1rem}
+  .ktotal .kval{font-size:1.3rem}
+  .pbar{grid-template-columns:1fr}
+  #selPeriodo,.rbtn,.pdate{grid-column:auto;width:100%}
+  .pdt-wrap{grid-column:auto}
+  .dtbl{min-width:480px}
+  .chart-wrap{height:150px}
+  #chartEmpilhado{max-height:180px}
+  .auth-card{padding:1.4rem 1rem}
+  .mov-filters{grid-template-columns:1fr}
 }
 
 /* ══════════════════════════════════════════════
@@ -613,9 +690,9 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
         <input type="date" id="pdtFim" class="pdt" title="Data final"/>
         <button class="pbt" id="btnPdtApply" title="Aplicar período">→</button>
       </div>
-      <div class="pdt-wrap">
+      <div class="pdt-wrap pdt-wrap--emp">
         <span class="pdt-lbl">Empresa</span>
-        <select id="dashEmp" class="pdt" style="height:28px;padding:4px 8px;min-width:140px" onchange="renderDash()">
+        <select id="dashEmp" class="pdt pdt--emp" onchange="renderDash()">
           <option value="">Todas</option>
         </select>
       </div>
@@ -656,7 +733,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
     <!-- Gráfico Receitas x Despesas -->
     <div class="shdr"><span class="stit">Receitas × Despesas por Marca</span><span class="sln"></span></div>
     <div class="kcard" style="margin-bottom:2.2rem;padding:1.4rem 1.6rem">
-      <canvas id="chartRxD" height="90"></canvas>
+      <div class="chart-wrap"><canvas id="chartRxD"></canvas></div>
     </div>
 
     <!-- Marcas -->
@@ -664,6 +741,12 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
     <div class="mgrid" id="mgrid">
       <div class="sk"></div><div class="sk"></div><div class="sk"></div>
       <div class="sk"></div><div class="sk"></div><div class="sk"></div>
+    </div>
+
+    <!-- Barras Empilhadas por Marca × Banco -->
+    <div class="shdr"><span class="stit" id="empilhadoTitulo">Saldo por Marca — Santander × Itaú</span><span class="sln"></span></div>
+    <div class="kcard" style="margin-bottom:2.2rem;padding:1.4rem 1.6rem">
+      <canvas id="chartEmpilhado"></canvas>
     </div>
 
     <!-- Tabela -->
@@ -855,9 +938,9 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
       <span class="stit" style="color:var(--or2)">Aguardando aprovação</span>
       <span class="sln"></span>
     </div>
-    <div class="twrap" id="wrapPendentes" style="max-width:820px;display:none;margin-bottom:1.5rem">
-      <table class="dtbl">
-        <colgroup><col style="width:34%"><col style="width:26%"><col style="width:18%"><col style="width:22%"></colgroup>
+    <div class="twrap" id="wrapPendentes" style="display:none;margin-bottom:1.5rem">
+      <table class="dtbl" style="table-layout:auto">
+        <colgroup><col style="width:30%"><col style="width:28%"><col style="width:14%"><col style="width:28%"></colgroup>
         <thead><tr><th>Nome</th><th>E-mail</th><th>Solicitado em</th><th>Ações</th></tr></thead>
         <tbody id="tbPendentes"></tbody>
       </table>
@@ -868,9 +951,9 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
       <span class="stit">Usuários ativos</span>
       <span class="sln"></span>
     </div>
-    <div class="twrap" style="max-width:820px;margin-bottom:1.5rem">
-      <table class="dtbl">
-        <colgroup><col style="width:26%"><col style="width:28%"><col style="width:14%"><col style="width:16%"><col style="width:16%"></colgroup>
+    <div class="twrap" style="margin-bottom:1.5rem">
+      <table class="dtbl" style="table-layout:auto">
+        <colgroup><col style="width:22%"><col style="width:26%"><col style="width:10%"><col style="width:12%"><col></colgroup>
         <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Desde</th><th>Ações</th></tr></thead>
         <tbody id="tbAtivos"></tbody>
       </table>
@@ -881,9 +964,9 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
       <span class="stit">Inativos / Rejeitados</span>
       <span class="sln"></span>
     </div>
-    <div class="twrap" style="max-width:820px">
-      <table class="dtbl">
-        <colgroup><col style="width:26%"><col style="width:30%"><col style="width:14%"><col style="width:16%"><col style="width:14%"></colgroup>
+    <div class="twrap">
+      <table class="dtbl" style="table-layout:auto">
+        <colgroup><col style="width:24%"><col style="width:28%"><col style="width:12%"><col style="width:12%"><col></colgroup>
         <thead><tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Desde</th><th>Ações</th></tr></thead>
         <tbody id="tbInativos"></tbody>
       </table>
@@ -934,6 +1017,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
           <option>Foster Burguer</option>
           <option>Caminito Parrilla</option>
           <option>Nazo Japanese Food</option>
+          <option>Responsa Bar</option>
         </select>
       </div>
       <div class="mfr">
@@ -947,6 +1031,31 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
     <div class="mfo">
       <button class="bs" id="modCanc">Cancelar</button>
       <button class="bp" id="modSave">Salvar Conta</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ALTERAR SENHA -->
+<div class="mov" id="modSenha" style="display:none">
+  <div class="mod">
+    <div class="mhd">
+      <h3>Alterar Senha</h3>
+      <button class="mcl" onclick="closeModSenha()">✕</button>
+    </div>
+    <div class="mbd">
+      <input type="hidden" id="senhaUserId"/>
+      <p id="senhaNomeLabel" style="font-size:.78rem;color:var(--t2);margin-bottom:.25rem"></p>
+      <div class="mft"><label>Nova senha</label>
+        <input class="fi2" type="password" id="novaSenhaInp" placeholder="Mínimo 6 caracteres"/>
+      </div>
+      <div class="mft"><label>Confirmar senha</label>
+        <input class="fi2" type="password" id="novaSenha2Inp" placeholder="Repita a nova senha"/>
+      </div>
+      <div id="senhaErro" style="font-size:.74rem;color:#EF4444;text-align:center;min-height:1.1rem"></div>
+    </div>
+    <div class="mfo">
+      <button class="bs" onclick="closeModSenha()">Cancelar</button>
+      <button class="bp" onclick="handleChangeSenha()">Salvar senha</button>
     </div>
   </div>
 </div>
@@ -1082,6 +1191,23 @@ const Auth = {
     toast('Usuário reativado.','ok');
   },
 
+  async deleteUser(id){
+    const u = this.currentUser();
+    if(u && u.id === id){ toast('Você não pode excluir sua própria conta.','er'); return; }
+    if(!confirm('Excluir este usuário permanentemente? Esta ação não pode ser desfeita.')) return;
+    const { error } = await _SB.rpc('admin_delete_user', { target_id: id });
+    if(error){ toast('Erro: '+error.message,'er'); return; }
+    renderUsuarios();
+    renderPendingBadge();
+    toast('Usuário excluído.','ok');
+  },
+
+  async changePassword(id, newPass){
+    const { error } = await _SB.rpc('admin_change_password', { target_id: id, new_pass: newPass });
+    if(error){ return { ok:false, msg: error.message }; }
+    return { ok:true };
+  },
+
   aplicarPermissoes(){
     const u = _currentUser; if(!u) return;
     const isAdm = u.role==='admin';
@@ -1195,6 +1321,31 @@ async function renderUsuarios(){
     <div class="usr-kpi"><div class="usr-kpi-lbl">Pendentes</div><div class="usr-kpi-val" style="color:var(--or2)">${pendentes}</div></div>
   `;
 
+  // ── Ícones SVG reutilizáveis ──────────────────────────────────
+  const ICO = {
+    check: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+    x:     `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+    key:   `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="3.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>`,
+    up:    `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>`,
+    down:  `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`,
+    pause: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`,
+    play:  `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+    trash: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>`,
+  };
+
+  // Gerador de botão ícone consistente
+  const iBtn = (fn, ico, color, title) =>
+    `<button onclick="${fn}" title="${title}"
+      style="background:none;border:1px solid ${color}40;border-radius:6px;
+      width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;
+      cursor:pointer;color:${color};transition:all .15s;flex-shrink:0;vertical-align:middle"
+      onmouseover="this.style.background='${color}18';this.style.borderColor='${color}80'"
+      onmouseout="this.style.background='none';this.style.borderColor='${color}40'"
+    >${ico}</button>`;
+
+  const tdAcao = `style="white-space:nowrap;vertical-align:middle"`;
+
+  // ── Pendentes ────────────────────────────────────────────────
   const pend = u.filter(x=>x.status==='pending');
   document.getElementById('shdrPendentes').style.display = pend.length ? '' : 'none';
   document.getElementById('wrapPendentes').style.display = pend.length ? '' : 'none';
@@ -1203,30 +1354,40 @@ async function renderUsuarios(){
         <td>${x.nome}</td>
         <td style="font-family:'DM Mono',monospace;font-size:.72rem">${x.email}</td>
         <td style="font-family:'DM Mono',monospace;font-size:.7rem">${fmtData(x.created_at)}</td>
-        <td>
-          <button onclick="Auth.approveUser('${x.id}')" class="bp" style="padding:3px 10px;font-size:.68rem;margin-right:4px">Aprovar</button>
-          <button onclick="Auth.rejectUser('${x.id}')" class="bs" style="padding:3px 10px;font-size:.68rem;color:#EF4444;border-color:rgba(239,68,68,.35)">Rejeitar</button>
+        <td ${tdAcao}>
+          <div style="display:inline-flex;gap:5px;align-items:center">
+            ${iBtn(`Auth.approveUser('${x.id}')`, ICO.check, '#10B981', 'Aprovar')}
+            ${iBtn(`Auth.rejectUser('${x.id}')`,  ICO.x,     '#EF4444', 'Rejeitar')}
+            ${iBtn(`Auth.deleteUser('${x.id}')`,  ICO.trash, '#EF4444', 'Excluir permanentemente')}
+          </div>
         </td>
       </tr>`).join('')
     : `<tr><td colspan="4" class="ecel">Nenhuma solicitação pendente.</td></tr>`;
 
+  // ── Ativos ───────────────────────────────────────────────────
   const ativ = u.filter(x=>x.status==='active');
   document.getElementById('tbAtivos').innerHTML = ativ.length
     ? ativ.map(x=>{
         const isMe = session && session.id === x.id;
+        const isAdm = x.role==='admin';
         return `<tr>
-          <td>${x.nome}${isMe?' <span style="font-size:.6rem;color:var(--t3)">(você)</span>':''}</td>
+          <td>${x.nome}${isMe?` <span style="font-size:.58rem;color:var(--t3)">(você)</span>`:''}</td>
           <td style="font-family:'DM Mono',monospace;font-size:.72rem">${x.email}</td>
-          <td><span class="sbadge ${x.role==='admin'?'role-adm st-active':'role-usr'}" style="${x.role!=='admin'?'background:rgba(255,255,255,.07);color:var(--t2)':''}">${x.role==='admin'?'ADM':'Usuário'}</span></td>
+          <td><span class="sbadge ${isAdm?'role-adm st-active':'role-usr'}" style="${!isAdm?'background:rgba(255,255,255,.07);color:var(--t2)':''}">${isAdm?'ADM':'Usuário'}</span></td>
           <td style="font-family:'DM Mono',monospace;font-size:.7rem">${fmtData(x.created_at)}</td>
-          <td>
-            ${!isMe?`<button onclick="Auth.toggleRole('${x.id}')" class="bs" style="padding:3px 9px;font-size:.65rem;margin-right:4px">${x.role==='admin'?'↓ Usuário':'↑ ADM'}</button>`:''}
-            ${!isMe?`<button onclick="Auth.deactivateUser('${x.id}')" class="bs" style="padding:3px 9px;font-size:.65rem;color:#EF4444;border-color:rgba(239,68,68,.3)">Desativar</button>`:''}
+          <td ${tdAcao}>
+            <div style="display:inline-flex;gap:5px;align-items:center">
+              ${!isMe ? iBtn(`Auth.toggleRole('${x.id}')`, isAdm?ICO.down:ICO.up, 'var(--or1)', isAdm?'Tornar Usuário':'Promover a ADM') : ''}
+              ${iBtn(`abrirModSenha('${x.id}','${x.nome}')`, ICO.key, 'var(--t2)', 'Alterar senha')}
+              ${!isMe ? iBtn(`Auth.deactivateUser('${x.id}')`, ICO.pause, '#F59E0B', 'Desativar acesso') : ''}
+              ${!isMe ? iBtn(`Auth.deleteUser('${x.id}')`,      ICO.trash, '#EF4444', 'Excluir permanentemente') : ''}
+            </div>
           </td>
         </tr>`;
       }).join('')
     : `<tr><td colspan="5" class="ecel">Nenhum usuário ativo.</td></tr>`;
 
+  // ── Inativos/Rejeitados ──────────────────────────────────────
   const inat = u.filter(x=>x.status==='inactive'||x.status==='rejected');
   document.getElementById('tbInativos').innerHTML = inat.length
     ? inat.map(x=>`<tr>
@@ -1234,9 +1395,47 @@ async function renderUsuarios(){
         <td style="font-family:'DM Mono',monospace;font-size:.72rem">${x.email}</td>
         <td><span class="sbadge ${x.status==='rejected'?'st-rejected':'st-inactive'}">${x.status==='rejected'?'Rejeitado':'Inativo'}</span></td>
         <td style="font-family:'DM Mono',monospace;font-size:.7rem">${fmtData(x.created_at)}</td>
-        <td><button onclick="Auth.reactivateUser('${x.id}')" class="bp" style="padding:3px 10px;font-size:.68rem">Reativar</button></td>
+        <td ${tdAcao}>
+          <div style="display:inline-flex;gap:5px;align-items:center">
+            ${iBtn(`Auth.reactivateUser('${x.id}')`, ICO.play,  '#10B981', 'Reativar acesso')}
+            ${iBtn(`Auth.deleteUser('${x.id}')`,      ICO.trash, '#EF4444', 'Excluir permanentemente')}
+          </div>
+        </td>
       </tr>`).join('')
     : `<tr><td colspan="5" class="ecel">Nenhum registro.</td></tr>`;
+}
+
+function abrirModSenha(id, nome){
+  document.getElementById('senhaUserId').value = id;
+  document.getElementById('senhaNomeLabel').textContent = 'Usuário: '+nome;
+  document.getElementById('novaSenhaInp').value = '';
+  document.getElementById('novaSenha2Inp').value = '';
+  document.getElementById('senhaErro').textContent = '';
+  const m = document.getElementById('modSenha');
+  m.style.display='flex';
+  setTimeout(()=>m.classList.add('op'),10);
+}
+function closeModSenha(){
+  const m = document.getElementById('modSenha');
+  m.classList.remove('op');
+  setTimeout(()=>m.style.display='none',200);
+}
+async function handleChangeSenha(){
+  const id = document.getElementById('senhaUserId').value;
+  const s1 = document.getElementById('novaSenhaInp').value;
+  const s2 = document.getElementById('novaSenha2Inp').value;
+  const erroEl = document.getElementById('senhaErro');
+  erroEl.textContent='';
+  if(!s1){ erroEl.textContent='Digite a nova senha.'; return; }
+  if(s1.length<6){ erroEl.textContent='Mínimo 6 caracteres.'; return; }
+  if(s1!==s2){ erroEl.textContent='As senhas não conferem.'; return; }
+  erroEl.style.color='var(--or2)';
+  erroEl.textContent='Salvando...';
+  const r = await Auth.changePassword(id, s1);
+  if(!r.ok){ erroEl.style.color='#EF4444'; erroEl.textContent='Erro: '+r.msg; return; }
+  erroEl.style.color='#10B981';
+  erroEl.textContent='Senha alterada com sucesso!';
+  setTimeout(closeModSenha, 1200);
 }
 
 function fmtData(iso){
@@ -1266,7 +1465,8 @@ const CORES={
   'CPD':'#EC4899',
   'Foster Burguer':'#3B82F6',
   'Caminito Parrilla':'#10B981',
-  'Nazo Japanese Food':'#8B5CF6'
+  'Nazo Japanese Food':'#8B5CF6',
+  'Responsa Bar':'#06B6D4'
 }
 const cor=m=>CORES[m]||'#888'
 function toast(msg,t=''){
@@ -1341,6 +1541,157 @@ let allRows=[]
    GRÁFICO RECEITAS × DESPESAS
 ═══════════════════════════════════════════════ */
 let _chartRxD=null;
+let selectedMarca=null; // marca selecionada nos cards
+
+function filtrarGraficoPorMarca(nome){
+  // Toggle: clica de novo deseleciona
+  selectedMarca = (selectedMarca === nome) ? null : nome;
+
+  // Visual: destaca o card selecionado
+  document.querySelectorAll('.mcard').forEach(c=>{
+    c.classList.toggle('active', c.dataset.marca === selectedMarca);
+  });
+
+  // Atualiza título do gráfico
+  const tit = document.getElementById('empilhadoTitulo');
+  if(tit) tit.textContent = selectedMarca
+    ? `${selectedMarca} — Saldo por Conta`
+    : 'Saldo por Marca — Santander × Itaú';
+
+  // Atualiza gráfico com filtro ativo
+  renderChartEmpilhado(null, allRows, selectedMarca);
+
+  // Também filtra a tabela de detalhe
+  setFiltroMarca(selectedMarca || '');
+}
+let _chartEmpilhado=null;
+
+/* renderChartEmpilhado
+   Barras horizontais empilhadas: uma barra por marca,
+   segmentos coloridos por banco (Santander sólido, Itaú translúcido) */
+function renderChartEmpilhado(mArr, rows, filterMarca=null){
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const tickColor=isDark?'rgba(255,255,255,.4)':'rgba(0,0,0,.45)';
+  const gridColor=isDark?'rgba(255,255,255,.06)':'rgba(0,0,0,.06)';
+  const bgCard=isDark?'#1e1e2e':'#fff';
+  const bdCard=isDark?'rgba(255,255,255,.1)':'rgba(0,0,0,.1)';
+
+  if(_chartEmpilhado){ _chartEmpilhado.destroy(); _chartEmpilhado=null; }
+
+  const ctx=document.getElementById('chartEmpilhado')?.getContext('2d');
+  if(!ctx) return;
+
+  let labels, dsSantander, dsItau;
+
+  if(filterMarca){
+    // ── Drill-down: contas da marca selecionada ──────────────
+    const contasMarca = rows.filter(r=>r.marca===filterMarca);
+    const empresas = [...new Set(contasMarca.map(r=>r.empresa))].sort();
+    const brandCor = cor(filterMarca);
+
+    labels = empresas;
+    dsSantander = {
+      label:'Santander',
+      data:empresas.map(emp=>{
+        const c=contasMarca.find(r=>r.empresa===emp&&r.banco.toLowerCase().includes('santander'));
+        return c?Math.max(0,c.saldo):0;
+      }),
+      backgroundColor:empresas.map(()=>brandCor+'EE'),
+      borderColor:empresas.map(()=>brandCor),
+      borderWidth:1, borderRadius:4, borderSkipped:false
+    };
+    dsItau = {
+      label:'Itaú',
+      data:empresas.map(emp=>{
+        const c=contasMarca.find(r=>r.empresa===emp&&(r.banco.toLowerCase().includes('itaú')||r.banco.toLowerCase().includes('itau')));
+        return c?Math.max(0,c.saldo):0;
+      }),
+      backgroundColor:empresas.map(()=>brandCor+'66'),
+      borderColor:empresas.map(()=>brandCor+'99'),
+      borderWidth:1, borderRadius:4, borderSkipped:false
+    };
+  } else {
+    // ── Visão geral: todas as marcas ─────────────────────────
+    labels = mArr ? mArr.map(([nome])=>nome) : [...new Set(rows.map(r=>r.marca))];
+
+    dsSantander = {
+      label:'Santander',
+      data:labels.map(nome=>rows.filter(r=>r.marca===nome&&r.banco.toLowerCase().includes('santander')).reduce((a,r)=>a+Math.max(0,r.saldo),0)),
+      backgroundColor:labels.map(nome=>cor(nome)+'EE'),
+      borderColor:labels.map(nome=>cor(nome)),
+      borderWidth:1, borderRadius:4, borderSkipped:false
+    };
+    dsItau = {
+      label:'Itaú',
+      data:labels.map(nome=>rows.filter(r=>r.marca===nome&&(r.banco.toLowerCase().includes('itaú')||r.banco.toLowerCase().includes('itau'))).reduce((a,r)=>a+Math.max(0,r.saldo),0)),
+      backgroundColor:labels.map(nome=>cor(nome)+'66'),
+      borderColor:labels.map(nome=>cor(nome)+'99'),
+      borderWidth:1, borderRadius:4, borderSkipped:false
+    };
+  }
+
+  // Altura dinâmica: 52px por marca
+  const altCanvas=labels.length*52+60;
+  const canvas=document.getElementById('chartEmpilhado');
+  if(canvas) canvas.style.height=altCanvas+'px';
+
+  _chartEmpilhado=new Chart(ctx,{
+    type:'bar',
+    data:{ labels, datasets:[dsSantander, dsItau] },
+    options:{
+      indexAxis:'y',
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{
+          position:'top',
+          align:'end',
+          labels:{
+            color:tickColor,
+            font:{family:'Syne',size:11},
+            boxWidth:12,
+            padding:14,
+            usePointStyle:true,
+            pointStyle:'rectRounded',
+            generateLabels:(chart)=>[
+              {text:'Santander',fillStyle:'rgba(148,163,184,.85)',strokeStyle:'transparent',lineWidth:0,pointStyle:'rectRounded'},
+              {text:'Itaú',fillStyle:'rgba(148,163,184,.4)',strokeStyle:'transparent',lineWidth:0,pointStyle:'rectRounded'}
+            ]
+          }
+        },
+        tooltip:{
+          backgroundColor:bgCard,
+          borderColor:bdCard,
+          borderWidth:1,
+          titleColor:isDark?'#fff':'#111',
+          bodyColor:isDark?'rgba(255,255,255,.7)':'rgba(0,0,0,.6)',
+          titleFont:{family:'Syne',weight:'700'},
+          bodyFont:{family:'DM Mono'},
+          padding:10,
+          callbacks:{
+            label:item=>`  ${item.dataset.label}: ${cur(item.parsed.x)}`
+          }
+        }
+      },
+      scales:{
+        x:{
+          stacked:true,
+          grid:{color:gridColor},
+          ticks:{
+            color:tickColor,
+            font:{family:'DM Mono',size:10},
+            callback:v=>v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v
+          }
+        },
+        y:{
+          stacked:true,
+          grid:{display:false},
+          ticks:{color:tickColor,font:{family:'Syne',size:11}}
+        }
+      }
+    }
+  });
+}
 /*
  * renderChartRxD — recebe { marca: { banco: {rec, desp} } }
  * Gera 4 datasets: Receitas Santander, Despesas Santander,
@@ -1391,7 +1742,7 @@ function renderChartRxD(mbData){
     type:'bar',
     data:{ labels, datasets },
     options:{
-      responsive:true, maintainAspectRatio:true,
+      responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{labels:{color:tickColor,font:{family:'Syne',size:11},boxWidth:12,padding:16}},
         tooltip:{
@@ -1441,8 +1792,11 @@ function renderDash(){
   document.getElementById('kDesp').textContent=curS(Math.abs(totDesp));
   document.getElementById('kTrf').textContent=curS(totTrf);
 
-  // Marcas
+  // Marcas — garante que todas as marcas definidas aparecem (mesmo sem contas)
   const marcas={};
+  Object.keys(CORES).forEach(m=>{
+    marcas[m]={saldo:0,contas:0,cor:cor(m),rec:0,desp:0,trf:0};
+  });
   rows.forEach(r=>{
     if(!marcas[r.marca]) marcas[r.marca]={saldo:0,contas:0,cor:cor(r.marca),rec:0,desp:0,trf:0};
     marcas[r.marca].saldo+=r.saldo;
@@ -1458,13 +1812,17 @@ function renderDash(){
   const mg=document.getElementById('mgrid');
   mg.innerHTML=mArr.map(([nome,v])=>{
     const pct=maxS>0?(Math.abs(v.saldo)/maxS*100).toFixed(1):0;
-    return `<div class="mcard" style="--mc:${v.cor}" onclick="setFiltroMarca('${nome}')">
+    const isActive = selectedMarca === nome;
+    return `<div class="mcard${isActive?' active':''}" data-marca="${nome}" style="--mc:${v.cor};cursor:pointer" onclick="filtrarGraficoPorMarca('${nome}')" title="${isActive?'Clique para voltar à visão geral':'Ver contas desta marca'}">
       <div class="mtag">${nome}</div>
       <div class="mval">${curS(v.saldo)}</div>
       <div class="mcts">${v.contas} conta${v.contas!==1?'s':''}</div>
       <div class="mbar"><div class="mbf" style="width:${pct}%;background:${v.cor}"></div></div>
     </div>`
   }).join('');
+
+  // Barras empilhadas por marca × banco (respeita seleção ativa)
+  renderChartEmpilhado(mArr, rows, selectedMarca);
 
   // Popula select de marcas (tabela de detalhe)
   const fm=document.getElementById('fMarca');
@@ -2035,8 +2393,15 @@ function limparBD(){
 
 async function executarLimpar(){
   if(!document.getElementById('chkConfLimpar').checked) return;
-  const { error }=await _SB.rpc('limpar_dados');
-  if(error){toast('Erro ao limpar: '+error.message,'er');return;}
+  // Supabase exige WHERE clause — usa gte(id,0) para apagar tudo com segurança
+  const [e1, e2] = await Promise.all([
+    _SB.from('transacoes').delete().gte('id', 0),
+    _SB.from('importacoes').delete().gte('id', 0)
+  ]);
+  const err = e1.error || e2.error;
+  if(err){toast('Erro ao limpar: '+err.message,'er');return;}
+  // Zera saldos iniciais
+  await _SB.from('contas').update({saldo_inicial:0}).gte('id',0);
   await loadAllData();
   const mod=document.getElementById('modLimpar');
   mod.classList.remove('op');
