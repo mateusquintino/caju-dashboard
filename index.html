@@ -14,6 +14,7 @@
   --glow:rgba(232,67,10,.22);--glow2:rgba(245,133,58,.10);
   --c-caju:#E8430A;--c-cpd:#EC4899;--c-foster:#3B82F6;
   --c-caminito:#10B981;--c-nazo:#8B5CF6;--c-responsa:#06B6D4;
+  --c-fermult:#0EA5E9;--c-cajupar-h:#F97316;
   --t:200ms cubic-bezier(.4,0,.2,1)
 }
 [data-theme="dark"]{
@@ -144,7 +145,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
 .fsel:focus{outline:none;border-color:var(--or1)}
 
 /* ── MARCAS ── */
-.mgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:.9rem;margin-bottom:2.2rem}
+.mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem;margin-bottom:2.2rem}
 .mcard{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;
   padding:1.1rem;cursor:pointer;transition:all var(--t);position:relative;overflow:hidden}
 .mcard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
@@ -285,7 +286,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
 .tst.er{border-color:#EF4444;color:#EF4444}
 
 @media(max-width:1100px){
-  .mgrid{grid-template-columns:repeat(3,1fr)}
+  .mgrid{grid-template-columns:repeat(4,1fr)}
   .kgrid{grid-template-columns:1fr 1fr 1fr}
 }
 
@@ -296,7 +297,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
   .main{padding:1.25rem 1rem}
   .kgrid{grid-template-columns:1fr 1fr;gap:.75rem}
   .kcard.ktotal{grid-column:1/-1}
-  .mgrid{grid-template-columns:repeat(3,1fr);gap:.75rem}
+  .mgrid{grid-template-columns:repeat(4,1fr);gap:.75rem}
   .dtbl{font-size:.8rem}
   .pbar{flex-wrap:wrap;gap:8px}
   .pdt-wrap{flex:1;min-width:180px}
@@ -739,8 +740,8 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
     <!-- Marcas -->
     <div class="shdr"><span class="stit">Saldo por Marca</span><span class="sln"></span></div>
     <div class="mgrid" id="mgrid">
-      <div class="sk"></div><div class="sk"></div><div class="sk"></div>
-      <div class="sk"></div><div class="sk"></div><div class="sk"></div>
+      <div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div>
+      <div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div>
     </div>
 
     <!-- Barras Empilhadas por Marca × Banco -->
@@ -1018,6 +1019,8 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
           <option>Caminito Parrilla</option>
           <option>Nazo Japanese Food</option>
           <option>Responsa Bar</option>
+          <option>Holding - Fermult</option>
+          <option>Holding - Cajupar</option>
         </select>
       </div>
       <div class="mfr">
@@ -1466,7 +1469,9 @@ const CORES={
   'Foster Burguer':'#3B82F6',
   'Caminito Parrilla':'#10B981',
   'Nazo Japanese Food':'#8B5CF6',
-  'Responsa Bar':'#06B6D4'
+  'Responsa Bar':'#06B6D4',
+  'Holding - Fermult':'#0EA5E9',
+  'Holding - Cajupar':'#F97316'
 }
 const cor=m=>CORES[m]||'#888'
 function toast(msg,t=''){
