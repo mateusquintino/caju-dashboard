@@ -2254,8 +2254,8 @@ function parseOFX(text,banco,contas){
     if(!conta) return {ok:false,msg:`Nenhuma conta ${banco} cadastrada. Cadastre antes de importar.`};
     const txBlocks=[...text.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi)];
     const txs=[];
-    const _REND=/^rendimento\b|juros\s+cr[eé]d|rendimento\s+(cdb|poupan|lci|lca)|cdb\s+rendimento/i;
-    const _TRF=/transfer[eê]ncia\s+entre\s+contas/i;
+    const _REND=/^rendimentos?\b|juros\s+cr[eé]d|rendimento\s+(cdb|poupan|lci|lca)|cdb\s+rendimento|rend\s+pago\s+aplic/i;
+    const _TRF=/transfer[eê]ncia\s+entre\s+contas|aplica[cç][aã]o\s+contamax|resgate\s+contamax/i;
     const campo=(bl,tag)=>{
       const m=bl.match(new RegExp('<'+tag+'>\\s*([^\\r\\n<]+)','i'));
       return m?m[1].trim():'';
@@ -2265,7 +2265,6 @@ function parseOFX(text,banco,contas){
       if(str.includes(',')) return parseFloat(str.replace(/\./g,'').replace(',','.'));
       return parseFloat(str);
     };
-    const _CONTAMAX=/contamax/i;
     const _SALDO_ANT=/saldo\s+anterior/i;
     for(const b of txBlocks){
       const bl=b[1];
@@ -2279,9 +2278,7 @@ function parseOFX(text,banco,contas){
       if(isNaN(valor)) continue;
       if(valor===0) continue;
       const data=`${dtRaw.slice(0,4)}-${dtRaw.slice(4,6)}-${dtRaw.slice(6,8)}`;
-      const desc=(memo||name||'').replace(/\s+/g,' ').trim();
-      if(_CONTAMAX.test(desc)) continue;
-      if(_SALDO_ANT.test(desc)) continue;
+      const desc=(memo||name||'').replace(/\s+/g,' ').trim();      if(_SALDO_ANT.test(desc)) continue;
       let tipo=valor>=0?'receita':'despesa';
       if(_REND.test(desc)) tipo='rendimento';
       else if(_TRF.test(desc)) tipo='transferencia';
