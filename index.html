@@ -2254,8 +2254,7 @@ function parseOFX(text,banco,contas){
     if(!conta) return {ok:false,msg:`Nenhuma conta ${banco} cadastrada. Cadastre antes de importar.`};
     const txBlocks=[...text.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi)];
     const txs=[];
-    const _REND=/^rendimentos?\b|juros\s+cr[eé]d|rendimento\s+(cdb|poupan|lci|lca)|cdb\s+rendimento|rend\s+pago\s+aplic/i;
-    const _TRF=/transfer[eê]ncia\s+entre\s+contas|aplica[cç][aã]o\s+contamax|resgate\s+contamax/i;
+    const _REND=/rend\s+pago\s+aplic\s+aut|juros|rendimento/i;
     const campo=(bl,tag)=>{
       const m=bl.match(new RegExp('<'+tag+'>\\s*([^\\r\\n<]+)','i'));
       return m?m[1].trim():'';
@@ -2272,6 +2271,7 @@ function parseOFX(text,banco,contas){
       const dtRaw=campo(bl,'DTPOSTED').replace(/[^\d]/g,'').slice(0,8);
       const valorStr=campo(bl,'TRNAMT');
       const valor=parseBRL(valorStr);
+      const trntype=campo(bl,'TRNTYPE').toUpperCase();
       const memo=campo(bl,'MEMO');
       const name=campo(bl,'NAME');
       if(!dtRaw||dtRaw.length<8) continue;
@@ -2281,7 +2281,7 @@ function parseOFX(text,banco,contas){
       const desc=(memo||name||'').replace(/\s+/g,' ').trim();      if(_SALDO_ANT.test(desc)) continue;
       let tipo=valor>=0?'receita':'despesa';
       if(_REND.test(desc)) tipo='rendimento';
-      else if(_TRF.test(desc)) tipo='transferencia';
+      else if(trntype.includes('XFER')||/transf/i.test(desc)) tipo='transferencia';
       txs.push({contaId:conta.id, fitid:fitid||null, data, desc, valor, tipo});
     }
     return {ok:true, txs, conta:conta.empresa, acctid:acctNum, msg:''};
