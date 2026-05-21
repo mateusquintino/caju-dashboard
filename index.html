@@ -2255,6 +2255,7 @@ function parseOFX(text,banco,contas){
     const txBlocks=[...text.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi)];
     const txs=[];
     const _REND=/rend\s+pago\s+aplic\s+aut|juros|rendimento/i;
+    const _CONTAMAX=/contamax/i;
     const campo=(bl,tag)=>{
       const m=bl.match(new RegExp('<'+tag+'>\\s*([^\\r\\n<]+)','i'));
       return m?m[1].trim():'';
@@ -2271,7 +2272,6 @@ function parseOFX(text,banco,contas){
       const dtRaw=campo(bl,'DTPOSTED').replace(/[^\d]/g,'').slice(0,8);
       const valorStr=campo(bl,'TRNAMT');
       const valor=parseBRL(valorStr);
-      const trntype=campo(bl,'TRNTYPE').toUpperCase();
       const memo=campo(bl,'MEMO');
       const name=campo(bl,'NAME');
       if(!dtRaw||dtRaw.length<8) continue;
@@ -2279,9 +2279,9 @@ function parseOFX(text,banco,contas){
       if(valor===0) continue;
       const data=`${dtRaw.slice(0,4)}-${dtRaw.slice(4,6)}-${dtRaw.slice(6,8)}`;
       const desc=(memo||name||'').replace(/\s+/g,' ').trim();      if(_SALDO_ANT.test(desc)) continue;
+      if(_CONTAMAX.test(desc)) continue;
       let tipo=valor>=0?'receita':'despesa';
       if(_REND.test(desc)) tipo='rendimento';
-      else if(trntype.includes('XFER')||/transf/i.test(desc)) tipo='transferencia';
       txs.push({contaId:conta.id, fitid:fitid||null, data, desc, valor, tipo});
     }
     return {ok:true, txs, conta:conta.empresa, acctid:acctNum, msg:''};
