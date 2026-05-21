@@ -2286,39 +2286,73 @@ function parseOFX(text,banco,contas){
       });
       if(conta) matchType='agencia';
     }
-    if(!conta && branchId && isItau){
-      conta=contas.find(c=>{
-        if(!c.ativo||!c.agencia) return false;
-        const cb=c.banco.toLowerCase();
-        if(!cb.includes('itaú')&&!cb.includes('itau')) return false;
-        return branchId===c.agencia.replace(/\D/g,'');
-      });
-      if(conta) matchType='branch';
+    if(!conta && isItau){
+      // Passo 3a: Itaú — match por AGÊNCIA + CONTA juntos (mais preciso para múltiplas contas)
+      if(branchId && acctDigits){
+        conta=contas.find(c=>{
+          if(!c.ativo) return false;
+          const cb=c.banco.toLowerCase();
+          if(!cb.includes('itaú')&&!cb.includes('itau')) return false;
+          if(!c.agencia&&!c.conta) return false;
+          const agOk=!c.agencia||(branchId===c.agencia.replace(/\D/g,''));
+          const ctDigits=c.conta?c.conta.replace(/\D/g,''):'';
+          const ctOk=!ctDigits||(acctDigits===ctDigits||acctDigits.endsWith(ctDigits));
+          return agOk&&ctOk&&(c.agencia||c.conta);
+        });
+        if(conta) matchType='agencia';
+      }
+      // Passo 3b: Itaú — match só por AGÊNCIA (BRANCHID) quando conta não bater
+      if(!conta && branchId){
+        const porAgencia=contas.filter(c=>{
+          if(!c.ativo||!c.agencia) return false;
+          const cb=c.banco.toLowerCase();
+          if(!cb.includes('itaú')&&!cb.includes('itau')) return false;
+          return branchId===c.agencia.replace(/\D/g,'');
+        });
+        // Só usa se identificar uma única conta nessa agência
+        if(porAgencia.length===1){conta=porAgencia[0];matchType='branch';}
+      }
     }
     if(!conta){
-      conta=contas.find(c=>{
+      // Fallback por banco — só usa se houver UMA única conta desse banco ativo
+      // Com múltiplas contas, o match genérico causaria associação errada
+      const candidatosBanco=contas.filter(c=>{
         if(!c.ativo) return false;
         const cb=c.banco.toLowerCase();
         if(isSantander) return cb.includes('santander');
         if(isItau) return cb.includes('itaú')||cb.includes('itau');
         return false;
       });
-      if(conta) matchType='bank';
+      if(candidatosBanco.length===1){conta=candidatosBanco[0];matchType='bank';}
     }
     if(!conta){
-      conta=contas.find(c=>{
+      const candidatosNome=contas.filter(c=>{
         if(!c.ativo) return false;
         const cb=c.banco.toLowerCase();
         const bn=bancoNorm;
         return cb.includes(bn)||bn.includes(cb.replace(/itaú/,'itau'));
       });
-      if(conta) matchType='nome';
+      if(candidatosNome.length===1){conta=candidatosNome[0];matchType='nome';}
     }
-    if(!conta) return {ok:false,msg:`Nenhuma conta ${banco} cadastrada. Cadastre antes de importar.`};
+    if(!conta){
+      // Verifica se ao menos existe alguma conta desse banco para dar erro mais preciso
+      const temBanco=contas.some(c=>{
+        if(!c.ativo) return false;
+        const cb=c.banco.toLowerCase();
+        if(isSantander) return cb.includes('santander');
+        if(isItau) return cb.includes('itaú')||cb.includes('itau');
+        return false;
+      });
+      if(temBanco&&acctNum) return {ok:false,msg:`Conta não identificada — ACCTID do arquivo: "${acctNum}". Verifique se o número da conta está correto no cadastro (Contas → editar).`};
+      return {ok:false,msg:`Nenhuma conta ${banco} cadastrada. Cadastre antes de importar.`};
+    }
     const txBlocks=[...text.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi)];
     const txs=[];
-    const _REND=/rend\s+pago\s+aplic\s+aut|juros|rendimento/i;
-    const _CONTAMAX=/contamax/i;
+    // Rendimentos — Santander e Itaú
+    const _REND=/rend\s+pago\s+aplic\s+aut|rend\s+aplic|rendimento\s+aplic|juros\s+aplic|juros\s+cred|rendimento|juros/i;
+    // Transações automáticas de investimento — Santander (CONTAMAX) e Itaú (aplic/resgate auto)
+    // São pares que se anulam: dinheiro sai e volta; só o rendimento importa
+    const _AUTO_INV=/contamax|aplic\s*aut[oa]|aplicacao\s+aut|aplic\s+automatica|resgate\s+aut[oa]|resgate\s+automatico|resgate\s+prog/i;
     const campo=(bl,tag)=>{
       const m=bl.match(new RegExp('<'+tag+'>\\s*([^\\r\\n<]+)','i'));
       return m?m[1].trim():'';
@@ -2328,10 +2362,12 @@ function parseOFX(text,banco,contas){
       if(str.includes(',')) return parseFloat(str.replace(/\./g,'').replace(',','.'));
       return parseFloat(str);
     };
-    const _SALDO_ANT=/saldo\s+anterior/i;
+    // Entradas de saldo (não são transações reais) — variantes Santander e Itaú
+    const _SALDO_ANT=/saldo\s+anterior|saldo\s+do\s+dia|saldo\s+inicial|saldo\s+em\s+\d|saldo\s+devedor/i;
     for(const b of txBlocks){
       const bl=b[1];
       const fitid=campo(bl,'FITID');
+      const trntype=campo(bl,'TRNTYPE').toUpperCase();
       const dtRaw=campo(bl,'DTPOSTED').replace(/[^\d]/g,'').slice(0,8);
       const valorStr=campo(bl,'TRNAMT');
       const valor=parseBRL(valorStr);
@@ -2343,9 +2379,12 @@ function parseOFX(text,banco,contas){
       const data=`${dtRaw.slice(0,4)}-${dtRaw.slice(4,6)}-${dtRaw.slice(6,8)}`;
       const desc=(memo||name||'').replace(/\s+/g,' ').trim();
       if(_SALDO_ANT.test(desc)) continue;
-      if(_CONTAMAX.test(desc)) continue;
+      if(_AUTO_INV.test(desc)) continue; // pula aplic/resgate automático (anulam-se)
       let tipo=valor>=0?'receita':'despesa';
-      if(_REND.test(desc)) tipo='rendimento';
+      // Rendimento: por descrição ou por TRNTYPE=INT/DIV
+      if(_REND.test(desc)||trntype==='INT'||trntype==='DIV') tipo='rendimento';
+      // Transferência: TRNTYPE=XFER indica transferência entre contas próprias
+      if(trntype==='XFER') tipo='transferencia';
       txs.push({contaId:conta.id, fitid:fitid||null, data, desc, valor, tipo});
     }
     return {ok:true, txs, conta:conta.empresa, acctid:acctNum, matchType, msg:''};
