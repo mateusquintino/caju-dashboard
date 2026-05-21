@@ -2216,15 +2216,28 @@ function parseOFX(text,banco,contas){
     const isItau=bancoNorm.includes('itaú')||bancoNorm.includes('itau')||autoItau;
     let conta=null;
     if(acctDigits){
+      // Passo 1: match EXATO (evita false-positive do endsWith)
       conta=contas.find(c=>{
         if(!c.ativo) return false;
         const cb=c.banco.toLowerCase();
-        const bancoOk=isSantander ? cb.includes('santander') : (cb.includes('itaú')||cb.includes('itau'));
-        if(!bancoOk) return false;
-        if(!c.conta) return false;
+        const bancoOk=isSantander ? cb.includes('santander') : (cb.includes('itãº')||cb.includes('itau'));
+        if(!bancoOk||!c.conta) return false;
         const contaDigits=c.conta.replace(/\D/g,'');
-        return acctDigits.endsWith(contaDigits)||acctDigits===contaDigits;
+        return contaDigits && acctDigits===contaDigits;
       });
+      if(conta) matchType='exact';
+      // Passo 2: endsWith — somente se sem match exato
+      if(!conta){
+        conta=contas.find(c=>{
+          if(!c.ativo) return false;
+          const cb=c.banco.toLowerCase();
+          const bancoOk=isSantander ? cb.includes('santander') : (cb.includes('itãº')||cb.includes('itau'));
+          if(!bancoOk||!c.conta) return false;
+          const contaDigits=c.conta.replace(/\D/g,'');
+          return contaDigits && acctDigits.endsWith(contaDigits);
+        });
+        if(conta) matchType='exact';
+      }
     }
     if(!conta && acctDigits && isSantander){
       conta=contas.find(c=>{
