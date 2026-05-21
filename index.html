@@ -1094,14 +1094,22 @@ function getTx()    { return _tx; }
 function getImps()  { return _imps; }
 
 async function loadAllData(){
-  const [cr,tr,ir] = await Promise.all([
-    _SB.from('contas').select('*').order('id'),
-    _SB.from('transacoes').select('*').order('data',{ascending:false}),
-    _SB.from('importacoes').select('*').order('data_importacao',{ascending:false})
-  ]);
-  _contas = (cr.data||[]).map(mapConta);
-  _tx     = (tr.data||[]).map(mapTx);
-  _imps   = ir.data||[];
+  let tentativas = 3;
+  while(tentativas-- > 0){
+    const [cr,tr,ir] = await Promise.all([
+      _SB.from('contas').select('*').order('id'),
+      _SB.from('transacoes').select('*').order('data',{ascending:false}).limit(50000),
+      _SB.from('importacoes').select('*').order('data_importacao',{ascending:false}).limit(1000)
+    ]);
+    if(cr.error || tr.error){
+      if(tentativas > 0) await new Promise(r=>setTimeout(r,600));
+      continue;
+    }
+    _contas = (cr.data||[]).map(mapConta);
+    _tx     = (tr.data||[]).map(mapTx);
+    _imps   = ir.data||[];
+    return;
+  }
 }
 
 /* ═══════════════════════════════════════════════
@@ -2471,6 +2479,15 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     btn.style.opacity=this.checked?'1':'.4';
     btn.style.cursor=this.checked?'pointer':'not-allowed';
   });
+  _SB.auth.onAuthStateChange(async (event)=>{
+    if(event==='TOKEN_REFRESHED' && _currentUser){
+      await loadAllData();
+      renderDash();
+      renderSaldos();
+      renderHist();
+    }
+  });
+
   const autenticado = await Auth.init();
   if(autenticado){
     await loadAllData();
