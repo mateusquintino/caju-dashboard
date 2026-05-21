@@ -229,6 +229,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
 .lok{color:#10B981;background:rgba(16,185,129,.05)}
 .lerr{color:#EF4444;background:rgba(239,68,68,.05)}
 .linf{color:var(--or2);background:var(--glow2)}
+.lwar{color:#F59E0B;background:rgba(245,158,11,.07)}
 
 /* ── SALDO INICIAL PAGE ── */
 .si-info{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;
@@ -287,7 +288,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
 
 @media(max-width:1100px){
   .mgrid{grid-template-columns:repeat(4,1fr)}
-  .kgrid{grid-template-columns:1fr 1fr 1fr}
+  .kgrid{grid-template-columns:repeat(3,1fr)}
 }
 
 /* ═══════════════════════════════════════════════
@@ -709,9 +710,9 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
     <!-- KPIs -->
     <div class="kgrid">
       <div class="kcard ktotal">
-        <div class="klbl">Saldo Total Consolidado</div>
+        <div class="klbl" id="kSaldoLbl">Saldo Total Consolidado</div>
         <div class="kval" id="kSaldo">—</div>
-        <div class="ksub">em <span id="kContas">—</span> contas</div>
+        <div class="ksub" id="kSaldoSub">em <span id="kContas">—</span> contas</div>
         <div class="kgl"></div>
       </div>
       <div class="kcard">
@@ -1096,6 +1097,7 @@ function getImps()  { return _imps; }
 async function loadAllData(){
   let tentativas = 3;
   while(tentativas-- > 0){
+    // Contas e importações — tabelas pequenas, carga única
     const [cr,ir] = await Promise.all([
       _SB.from('contas').select('*').order('id'),
       _SB.from('importacoes').select('*').order('data_importacao',{ascending:false}).limit(1000)
@@ -1104,6 +1106,7 @@ async function loadAllData(){
       if(tentativas > 0) await new Promise(r=>setTimeout(r,600));
       continue;
     }
+    // Transações — paginação de 1000 em 1000 (PostgREST limita a 1000/req)
     const PAGE = 1000;
     let allTx = [], page = 0, hasMore = true;
     while(hasMore){
@@ -1475,6 +1478,29 @@ async function renderPendingBadge(){
 
 /* ── Helpers ── */
 const cur = v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v)
+
+function getPeriodDates(){
+  const hoje=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  const fmt=d=>`${pad(d.getDate())}/${pad(d.getMonth()+1)}`;
+  const ontem=new Date(hoje); ontem.setDate(hoje.getDate()-1);
+  const semIni=new Date(hoje); semIni.setDate(hoje.getDate()-hoje.getDay());
+  if(currentPer==='dia')    return {ini:fmt(hoje),   fim:fmt(hoje)};
+  if(currentPer==='ontem')  return {ini:fmt(ontem),  fim:fmt(ontem)};
+  if(currentPer==='semana') return {ini:fmt(semIni), fim:fmt(hoje)};
+  if(currentPer==='ano'){
+    const ano=hoje.getFullYear();
+    return {ini:`01/01/${ano}`, fim:`31/12/${ano}`};
+  }
+  if(currentPer==='custom'){
+    const fmtISO=s=>{ if(!s) return ''; const [y,m,d]=s.split('-'); return `${d}/${m}`; };
+    return {ini:fmtISO(dataRangeIni)||'—', fim:fmtISO(dataRangeFim)||'—'};
+  }
+  // mensal (default)
+  const mes=hoje.getMonth()+1, ano=hoje.getFullYear();
+  const ultimo=new Date(ano,mes,0).getDate();
+  return {ini:`01/${pad(mes)}`, fim:`${ultimo}/${pad(mes)}`};
+}
 const curS = v=>{
   const a=Math.abs(v);
   if(a>=1e6) return (v/1e6).toFixed(2).replace('.',',')+' M';
@@ -1806,11 +1832,20 @@ function renderDash(){
 
   // KPIs — inclui transferências positivas em entradas e negativas em saídas
   const totSaldo=rows.reduce((a,r)=>a+r.saldo,0);
+  const totSaldoIni=rows.reduce((a,r)=>a+(r.saldoInicial||0),0); // saldo no início do período
   const totRec=rows.reduce((a,r)=>a+r.receitas+Math.max(0,r.transferencias||0),0);
   const totDesp=rows.reduce((a,r)=>a+r.despesas+Math.min(0,r.transferencias||0),0);
   const totTrf=rows.reduce((a,r)=>a+Math.abs(r.transferencias||0),0);
+
+  // Datas do período para os labels
+  const pd=getPeriodDates();
+  const lblEl=document.getElementById('kSaldoLbl');
+  const subEl=document.getElementById('kSaldoSub');
+  if(lblEl) lblEl.textContent=`Saldo Final · ${pd.fim}`;
+  if(subEl) subEl.innerHTML=`em <span id="kContas">${rows.length}</span> contas &nbsp;·&nbsp; <span style="color:var(--t3);font-size:.65rem">Inicial ${pd.ini}: ${cur(totSaldoIni)}</span>`;
+  else document.getElementById('kContas').textContent=rows.length;
+
   document.getElementById('kSaldo').textContent=cur(totSaldo);
-  document.getElementById('kContas').textContent=rows.length;
   document.getElementById('kRec').textContent=curS(totRec);
   document.getElementById('kDesp').textContent=curS(Math.abs(totDesp));
   document.getElementById('kTrf').textContent=curS(totTrf);
@@ -2123,6 +2158,9 @@ async function processarOFX(){
       if(!parsed.ok){addLog(`✗ ${file.name} — ${parsed.msg}`,'err');continue;}
 
       addLog(`${file.name} — ${parsed.txs.length} transações encontradas...`,'inf');
+      if(parsed.matchType==='bank'||parsed.matchType==='nome'){
+        addLog(`  ⚠ Conta vinculada por fallback genérico: "${parsed.conta}". Cadastre o nº da conta (ACCTID: ${parsed.acctid}) para match exato.`,'war');
+      }
 
       let rowsParaInserir;
       let removidas=0;
@@ -2163,7 +2201,7 @@ async function processarOFX(){
 
       for(let i=0;i<rows.length;i+=LOTE){
         addLog(`  Inserindo ${i+1}–${Math.min(i+LOTE,rows.length)} de ${rows.length}...`,'inf');
-        const {error}=await _SB.from('transacoes').insert(rows.slice(i,i+LOTE));
+        const {error}=await _SB.from('transacoes').upsert(rows.slice(i,i+LOTE),{onConflict:'conta_id,fitid',ignoreDuplicates:true});
         if(error){erroFatal=error;break;}
       }
       if(erroFatal){addLog(`✗ ${file.name} — Erro: ${erroFatal.message}`,'err');continue;}
@@ -2185,19 +2223,8 @@ async function processarOFX(){
     }
   }
 
-  // Adiciona novas ao cache local — sem recarregar TUDO do banco
-  if(txsNovas.length){
-    const novasMapped=txsNovas.map((t,i)=>({
-      id:-(Date.now()+i), contaId:t.contaId, data:t.data,
-      desc:t.desc, valor:t.valor, tipo:t.tipo, fitid:t.fitid
-    }));
-    _tx=[...novasMapped,..._tx].sort((a,b)=>b.data.localeCompare(a.data));
-  }
-
-  // Só recarrega o histórico de importações (tabela pequena)
-  const {data:novosImps}=await _SB.from('importacoes')
-    .select('*').order('data_importacao',{ascending:false}).limit(50);
-  _imps=novosImps||[];
+  // Recarrega todos os dados do banco — garante que UI reflete exatamente o que foi salvo
+  await loadAllData();
 
   pending.santander=[];pending.itau=[];
   document.getElementById('flSant').innerHTML='';
@@ -2225,23 +2252,24 @@ function parseOFX(text,banco,contas){
     const isSantander=bancoNorm.includes('santander')||autoSantander;
     const isItau=bancoNorm.includes('itaú')||bancoNorm.includes('itau')||autoItau;
     let conta=null;
+    let matchType='none'; // 'exact'|'agencia'|'branch'|'bank'|'nome'
     if(acctDigits){
-      // Passo 1: match EXATO (evita false-positive do endsWith)
+      // Passo 1: match EXATO (prioridade máxima — evita false-positive por endsWith)
       conta=contas.find(c=>{
         if(!c.ativo) return false;
         const cb=c.banco.toLowerCase();
-        const bancoOk=isSantander ? cb.includes('santander') : (cb.includes('itãº')||cb.includes('itau'));
+        const bancoOk=isSantander ? cb.includes('santander') : (cb.includes('itaú')||cb.includes('itau'));
         if(!bancoOk||!c.conta) return false;
         const contaDigits=c.conta.replace(/\D/g,'');
         return contaDigits && acctDigits===contaDigits;
       });
       if(conta) matchType='exact';
-      // Passo 2: endsWith — somente se sem match exato
+      // Passo 2: endsWith — somente se nenhum match exato encontrado
       if(!conta){
         conta=contas.find(c=>{
           if(!c.ativo) return false;
           const cb=c.banco.toLowerCase();
-          const bancoOk=isSantander ? cb.includes('santander') : (cb.includes('itãº')||cb.includes('itau'));
+          const bancoOk=isSantander ? cb.includes('santander') : (cb.includes('itaú')||cb.includes('itau'));
           if(!bancoOk||!c.conta) return false;
           const contaDigits=c.conta.replace(/\D/g,'');
           return contaDigits && acctDigits.endsWith(contaDigits);
@@ -2256,6 +2284,7 @@ function parseOFX(text,banco,contas){
         if(!cb.includes('santander')) return false;
         return acctDigits.startsWith(c.agencia.replace(/\D/g,''));
       });
+      if(conta) matchType='agencia';
     }
     if(!conta && branchId && isItau){
       conta=contas.find(c=>{
@@ -2264,6 +2293,7 @@ function parseOFX(text,banco,contas){
         if(!cb.includes('itaú')&&!cb.includes('itau')) return false;
         return branchId===c.agencia.replace(/\D/g,'');
       });
+      if(conta) matchType='branch';
     }
     if(!conta){
       conta=contas.find(c=>{
@@ -2273,6 +2303,7 @@ function parseOFX(text,banco,contas){
         if(isItau) return cb.includes('itaú')||cb.includes('itau');
         return false;
       });
+      if(conta) matchType='bank';
     }
     if(!conta){
       conta=contas.find(c=>{
@@ -2281,6 +2312,7 @@ function parseOFX(text,banco,contas){
         const bn=bancoNorm;
         return cb.includes(bn)||bn.includes(cb.replace(/itaú/,'itau'));
       });
+      if(conta) matchType='nome';
     }
     if(!conta) return {ok:false,msg:`Nenhuma conta ${banco} cadastrada. Cadastre antes de importar.`};
     const txBlocks=[...text.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi)];
@@ -2309,13 +2341,14 @@ function parseOFX(text,banco,contas){
       if(isNaN(valor)) continue;
       if(valor===0) continue;
       const data=`${dtRaw.slice(0,4)}-${dtRaw.slice(4,6)}-${dtRaw.slice(6,8)}`;
-      const desc=(memo||name||'').replace(/\s+/g,' ').trim();      if(_SALDO_ANT.test(desc)) continue;
+      const desc=(memo||name||'').replace(/\s+/g,' ').trim();
+      if(_SALDO_ANT.test(desc)) continue;
       if(_CONTAMAX.test(desc)) continue;
       let tipo=valor>=0?'receita':'despesa';
       if(_REND.test(desc)) tipo='rendimento';
       txs.push({contaId:conta.id, fitid:fitid||null, data, desc, valor, tipo});
     }
-    return {ok:true, txs, conta:conta.empresa, acctid:acctNum, msg:''};
+    return {ok:true, txs, conta:conta.empresa, acctid:acctNum, matchType, msg:''};
   }catch(e){
     return {ok:false, msg:'Erro ao ler OFX: '+e.message};
   }
@@ -2502,6 +2535,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     btn.style.opacity=this.checked?'1':'.4';
     btn.style.cursor=this.checked?'pointer':'not-allowed';
   });
+
+  // Quando o Supabase renova o token em background (reload com sessão expirada),
+  // recarrega os dados para evitar dashboard vazio ou com valores errados
   _SB.auth.onAuthStateChange(async (event)=>{
     if(event==='TOKEN_REFRESHED' && _currentUser){
       await loadAllData();
@@ -2592,10 +2628,10 @@ async function importarNovosOFX(){
             novasTx = res.txs.filter(t=>!t.fitid||!existSet.has(t.fitid));
           }
           if(novasTx.length){
-            await _SB.from('transacoes').insert(novasTx.map(t=>({
+            await _SB.from('transacoes').upsert(novasTx.map(t=>({
               conta_id:t.contaId, data:t.data, descricao:t.desc,
               valor:t.valor, tipo:t.tipo, fitid:t.fitid||null
-            })));
+            })),{onConflict:'conta_id,fitid',ignoreDuplicates:true});
             await _SB.from('importacoes').insert({
               arquivo:arq.nome, banco, qtd_transacoes:novasTx.length, status:'ok'
             });
@@ -2609,7 +2645,8 @@ async function importarNovosOFX(){
     }
     salvarImportados();
     if(importados > 0){
-      renderDash();
+      await loadAllData();
+      renderDash();renderMov();renderHist();renderSaldos();
       toast(`✓ Auto-importados ${importados} OFX(s) novos`);
     }
   } catch(e){
