@@ -1096,17 +1096,27 @@ function getImps()  { return _imps; }
 async function loadAllData(){
   let tentativas = 3;
   while(tentativas-- > 0){
-    const [cr,tr,ir] = await Promise.all([
+    const [cr,ir] = await Promise.all([
       _SB.from('contas').select('*').order('id'),
-      _SB.from('transacoes').select('*').order('data',{ascending:false}).limit(50000),
       _SB.from('importacoes').select('*').order('data_importacao',{ascending:false}).limit(1000)
     ]);
-    if(cr.error || tr.error){
+    if(cr.error){
       if(tentativas > 0) await new Promise(r=>setTimeout(r,600));
       continue;
     }
+    const PAGE = 1000;
+    let allTx = [], page = 0, hasMore = true;
+    while(hasMore){
+      const {data,error} = await _SB.from('transacoes')
+        .select('*').order('data',{ascending:false})
+        .range(page*PAGE, (page+1)*PAGE-1);
+      if(error || !data || data.length===0){ hasMore=false; break; }
+      allTx = allTx.concat(data);
+      hasMore = data.length === PAGE;
+      page++;
+    }
     _contas = (cr.data||[]).map(mapConta);
-    _tx     = (tr.data||[]).map(mapTx);
+    _tx     = allTx.map(mapTx);
     _imps   = ir.data||[];
     return;
   }
