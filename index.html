@@ -816,12 +816,13 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
     <div class="twrap">
       <table class="dtbl">
         <colgroup>
-          <col style="width:28%"><col style="width:10%"><col style="width:12%">
-          <col style="width:12%"><col style="width:14%"><col style="width:14%"><col style="width:10%">
+          <col style="width:7%"><col style="width:22%"><col style="width:9%">
+          <col style="width:8%"><col style="width:6%"><col style="width:13%">
+          <col style="width:14%"><col style="width:11%"><col style="width:8%">
         </colgroup>
         <thead><tr>
-          <th>Empresa</th><th>Marca</th><th>Banco</th>
-          <th>Agência</th><th>Conta</th><th>Saldo Inicial</th><th>Ações</th>
+          <th>Loja</th><th>Empresa</th><th>Marca</th><th>Banco</th>
+          <th>Ag.</th><th>Conta (ACCTID)</th><th>CNPJ</th><th>Saldo Inicial</th><th>Ações</th>
         </tr></thead>
         <tbody id="cBody"></tbody>
       </table>
@@ -1038,7 +1039,11 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
     </div>
     <div class="mbd">
       <input type="hidden" id="fId"/>
-      <div class="mft"><label>Empresa</label><input class="fi2" id="fEmp" placeholder="Ex: Caju 01"/></div>
+      <div class="mfr">
+        <div class="mft"><label>Código da Loja</label><input class="fi2" id="fLoja" placeholder="Ex: MULT 02, FB03 - AC"/></div>
+        <div class="mft"><label>CNPJ</label><input class="fi2" id="fCnpj" placeholder="00.000.000/0000-00"/></div>
+      </div>
+      <div class="mft"><label>Empresa (nome completo)</label><input class="fi2" id="fEmp" placeholder="Ex: Foster's Burger - Taguatinga"/></div>
       <div class="mft"><label>Marca</label>
         <select class="fi2" id="fMrc">
           <option value="">Selecione</option>
@@ -1110,8 +1115,8 @@ let _imps   = [];
 let _currentUser = null; // perfil do usuário logado
 
 function mapConta(c){
-  return { id:c.id, empresa:c.empresa, marca:c.marca, banco:c.banco,
-    agencia:c.agencia||'', conta:c.conta||'',
+  return { id:c.id, loja:c.loja||'', empresa:c.empresa, marca:c.marca, banco:c.banco,
+    cnpj:c.cnpj||'', agencia:c.agencia||'', conta:c.conta||'',
     saldoInicial:parseFloat(c.saldo_inicial)||0, ativo:c.ativo };
 }
 function mapTx(t){
@@ -1545,7 +1550,14 @@ const CORES={
   'Holding - Fermult':'#0EA5E9',
   'Holding - Cajupar':'#F97316'
 }
-const cor=m=>CORES[m]||'#888'
+// Cor por marca — retorna cor cadastrada ou gera cor determinística para novas marcas
+// adicionadas ao BD futuramente (sem precisar editar o HTML)
+function cor(m){
+  if(!m) return '#888';
+  if(CORES[m]) return CORES[m];
+  let h=0;for(let i=0;i<m.length;i++) h=(h*31+m.charCodeAt(i))&0xFFFFFF;
+  return `hsl(${h%360},62%,52%)`;
+}
 function toast(msg,t=''){
   const el=document.getElementById('toast');
   el.textContent=msg;el.className='tst on '+(t||'');
@@ -1971,15 +1983,17 @@ function renderTabela(){
 function renderContas(){
   const contas=getContas().filter(c=>c.ativo);
   const cb=document.getElementById('cBody');
-  if(!contas.length){cb.innerHTML=`<tr><td colspan="7" class="ecel">Nenhuma conta cadastrada.</td></tr>`;return}
+  if(!contas.length){cb.innerHTML=`<tr><td colspan="9" class="ecel">Nenhuma conta cadastrada.</td></tr>`;return}
   cb.innerHTML=contas.map(c=>{
     const co=cor(c.marca);
     return `<tr>
+      <td style="font-family:'DM Mono',monospace;font-size:.7rem;white-space:nowrap;color:var(--t2)">${c.loja||'—'}</td>
       <td title="${c.empresa}">${c.empresa}</td>
       <td><span class="bmarca" style="background:${co}22;color:${co}">${c.marca}</span></td>
       <td>${c.banco}</td>
       <td>${c.agencia||'—'}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:.72rem">${c.conta||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:.7rem">${c.conta||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:.68rem;color:var(--t3)">${c.cnpj||'—'}</td>
       <td class="r">${cur(c.saldoInicial||0)}</td>
       <td>
         <button onclick="editConta(${c.id})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:.8rem;padding:2px 6px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='var(--or1)'" onmouseout="this.style.color='var(--t3)'">✎</button>
@@ -1993,6 +2007,8 @@ function editConta(id){
   const c=getContas().find(x=>x.id===id);if(!c)return;
   document.getElementById('modTit').textContent='Editar Conta';
   document.getElementById('fId').value=id;
+  document.getElementById('fLoja').value=c.loja||'';
+  document.getElementById('fCnpj').value=c.cnpj||'';
   document.getElementById('fEmp').value=c.empresa;
   document.getElementById('fMrc').value=c.marca;
   document.getElementById('fBnk').value=c.banco;
@@ -2012,6 +2028,8 @@ async function delConta(id){
 
 async function salvarConta(){
   const id=document.getElementById('fId').value;
+  const loja=document.getElementById('fLoja').value.trim();
+  const cnpj=document.getElementById('fCnpj').value.trim();
   const emp=document.getElementById('fEmp').value.trim();
   const mrc=document.getElementById('fMrc').value;
   const bnk=document.getElementById('fBnk').value;
@@ -2020,9 +2038,9 @@ async function salvarConta(){
   const ct=document.getElementById('fCt').value.trim();
   let error;
   if(id){
-    ({error}=await _SB.from('contas').update({empresa:emp,marca:mrc,banco:bnk,agencia:ag,conta:ct}).eq('id',parseInt(id)));
+    ({error}=await _SB.from('contas').update({loja,empresa:emp,marca:mrc,banco:bnk,agencia:ag,conta:ct,cnpj}).eq('id',parseInt(id)));
   } else {
-    ({error}=await _SB.from('contas').insert({empresa:emp,marca:mrc,banco:bnk,agencia:ag,conta:ct,saldo_inicial:0,ativo:true}));
+    ({error}=await _SB.from('contas').insert({loja,empresa:emp,marca:mrc,banco:bnk,agencia:ag,conta:ct,cnpj,saldo_inicial:0,ativo:true}));
   }
   if(error){toast('Erro: '+error.message,'er');return;}
   const { data }=await _SB.from('contas').select('*').order('id');
@@ -2336,13 +2354,24 @@ function parseOFX(text,banco,contas){
       }
     }
     if(!conta && acctDigits && isSantander){
-      conta=contas.find(c=>{
+      // Passo 2a: Santander — match exato por conta (ACCTID começa com agência)
+      const candidatosAgSant=contas.filter(c=>{
         if(!c.ativo||!c.agencia) return false;
         const cb=c.banco.toLowerCase();
         if(!cb.includes('santander')) return false;
         return acctDigits.startsWith(c.agencia.replace(/\D/g,''));
       });
-      if(conta) matchType='agencia';
+      // Só usa se identificar uma única conta — múltiplas contas na mesma agência exige match mais preciso
+      if(candidatosAgSant.length===1){conta=candidatosAgSant[0];matchType='agencia';}
+      else if(candidatosAgSant.length>1){
+        // Tenta match mais preciso: ACCTID completo começa com agência+conta
+        const exato=candidatosAgSant.find(c=>{
+          const ctClean=c.conta?c.conta.replace(/\D/g,''):'';
+          return ctClean && acctDigits===ctClean;
+        });
+        if(exato){conta=exato;matchType='agencia';}
+        // Se não, deixa sem match para retornar erro descritivo abaixo
+      }
     }
     if(!conta && isItau){
       // Passo 3a: Itaú — match por AGÊNCIA + CONTA juntos (mais preciso para múltiplas contas)
@@ -2410,7 +2439,7 @@ function parseOFX(text,banco,contas){
     const _REND=/rend\s+pago\s+aplic\s+aut|rend\s+aplic|rendimento\s+aplic|juros\s+aplic|juros\s+cred|rendimento|juros/i;
     // Transações automáticas de investimento — Santander (CONTAMAX) e Itaú (aplic/resgate auto)
     // São pares que se anulam: dinheiro sai e volta; só o rendimento importa
-    const _AUTO_INV=/contamax|aplic\s*aut[oa]|aplicacao\s+aut|aplic\s+automatica|resgate\s+aut[oa]|resgate\s+automatico|resgate\s+prog/i;
+    const _AUTO_INV=/contamax|aplic\s*aut[oa]|aplicacao\s+aut|aplic\s+automatica|resgate\s+aut[oa]|resgate\s+automatico|resgate\s+prog|bloqueio\s+pix|desbloqueio\s+pix/i;
     const campo=(bl,tag)=>{
       const m=bl.match(new RegExp('<'+tag+'>\\s*([^\\r\\n<]+)','i'));
       return m?m[1].trim():'';
@@ -2470,6 +2499,8 @@ function renderHist(){
 function openMod(){
   document.getElementById('modTit').textContent='Nova Conta Bancária';
   document.getElementById('fId').value='';
+  document.getElementById('fLoja').value='';
+  document.getElementById('fCnpj').value='';
   document.getElementById('fEmp').value='';
   document.getElementById('fMrc').value='';
   document.getElementById('fBnk').value='';
