@@ -217,6 +217,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
   border:1px solid var(--bd);border-radius:7px;padding:5px 9px;font-size:.72rem;color:var(--t2)}
 .fitn{font-family:'DM Mono',monospace;font-size:.68rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
 .imp-act{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+.imp-act-2col{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;margin-bottom:.85rem}
 .reimp-chk{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:.74rem;
   color:var(--t2);background:var(--bg3);border:1px solid var(--bd);
   border-radius:7px;padding:7px 12px;transition:all var(--t);white-space:nowrap}
@@ -428,6 +429,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
   .dzone{padding:1.2rem}
   .imp-act{flex-direction:column;align-items:stretch}
   .imp-act .bp,.imp-act .reimp-chk{width:100%;justify-content:center}
+  .imp-act-2col{grid-template-columns:1fr}
 
   /* ── MODAL ── */
   .mod{width:96vw;max-width:none}
@@ -720,6 +722,12 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
           <option value="">Todas</option>
         </select>
       </div>
+      <div class="pdt-wrap pdt-wrap--emp">
+        <span class="pdt-lbl">Banco</span>
+        <select id="dashBanco" class="pdt pdt--emp" onchange="renderDash()">
+          <option value="">Todos</option>
+        </select>
+      </div>
       <span class="pdate" id="pdate">maio 2026</span>
       <button class="rbtn" id="rbtn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -923,12 +931,19 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
         <div class="dfils" id="flItau"></div>
       </div>
     </div>
-    <div class="imp-act">
-      <button class="bp bi" id="btnProc" disabled>
+    <div class="imp-act-2col">
+      <button class="bp bi" id="btnProcSant" disabled>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <polyline points="20 6 9 17 4 12"/>
-        </svg>Processar e Importar
+        </svg>Processar Santander
       </button>
+      <button class="bp bi" id="btnProcItau" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>Processar Itaú
+      </button>
+    </div>
+    <div class="imp-act" style="justify-content:flex-start;margin-bottom:.75rem">
       <label class="reimp-chk" id="lblForce">
         <input type="checkbox" id="chkForce"/>
         <span>Forçar reimportação <small>(substitui duplicatas)</small></span>
@@ -1120,7 +1135,7 @@ function mapConta(c){
     saldoInicial:parseFloat(c.saldo_inicial)||0, ativo:c.ativo };
 }
 function mapTx(t){
-  return { id:t.id, contaId:t.conta_id, data:t.data,
+  return { id:t.id, contaId:+t.conta_id, data:t.data,
     desc:t.descricao||'', valor:parseFloat(t.valor)||0, tipo:t.tipo, fitid:t.fitid };
 }
 function getContas(){ return _contas; }
@@ -1139,18 +1154,27 @@ async function loadAllData(){
       if(tentativas > 0) await new Promise(r=>setTimeout(r,600));
       continue;
     }
-    // Transações — paginação de 1000 em 1000 (PostgREST limita a 1000/req)
+    // Transações — busca em paralelo nas tabelas Santander e Itaú
+    // (paginação de 1000 em 1000 — limite do PostgREST)
     const PAGE = 1000;
-    let allTx = [], page = 0, hasMore = true;
-    while(hasMore){
-      const {data,error} = await _SB.from('transacoes')
-        .select('*').order('data',{ascending:false})
-        .range(page*PAGE, (page+1)*PAGE-1);
-      if(error || !data || data.length===0){ hasMore=false; break; }
-      allTx = allTx.concat(data);
-      hasMore = data.length === PAGE;
-      page++;
+    async function fetchAllPages(tabela){
+      let rows = [], p = 0, more = true;
+      while(more){
+        const {data, error} = await _SB.from(tabela)
+          .select('*').order('data',{ascending:false})
+          .range(p*PAGE, (p+1)*PAGE-1);
+        if(error || !data || data.length===0){ more=false; break; }
+        rows = rows.concat(data);
+        more = data.length === PAGE;
+        p++;
+      }
+      return rows;
     }
+    const [santTx, itauTx] = await Promise.all([
+      fetchAllPages('transacoes_santander'),
+      fetchAllPages('transacoes_itau')
+    ]);
+    const allTx = santTx.concat(itauTx);
     _contas = (cr.data||[]).map(mapConta);
     _tx     = allTx.map(mapTx);
     _imps   = ir.data||[];
@@ -1870,6 +1894,14 @@ function renderDash(){
     empresas.map(e=>`<option value="${e}"${e===empVal?'selected':''}>${e}</option>`).join('');
   if(empVal) rows=rows.filter(r=>r.empresa===empVal);
 
+  // Popula e aplica filtro de banco
+  const bancoSel=document.getElementById('dashBanco');
+  const bancoVal=bancoSel.value;
+  const bancos=[...new Set(rows.map(r=>r.banco).filter(Boolean))].sort();
+  bancoSel.innerHTML='<option value="">Todos</option>'+
+    bancos.map(b=>`<option value="${b}"${b===bancoVal?'selected':''}>${b}</option>`).join('');
+  if(bancoVal) rows=rows.filter(r=>r.banco===bancoVal);
+
   // KPIs — inclui transferências positivas em entradas e negativas em saídas
   const totSaldo=rows.reduce((a,r)=>a+r.saldo,0);
   const totSaldoIni=rows.reduce((a,r)=>a+(r.saldoInicial||0),0); // saldo no início do período
@@ -2154,6 +2186,7 @@ async function saveSI(id){
   renderDash();toast('Saldo inicial atualizado!','ok');
 }
 async function calibrarSI(id){
+  const idN=Number(id);
   const dataEl=document.getElementById('calDate_'+id);
   const valEl=document.getElementById('calVal_'+id);
   const dataRef=dataEl?.value;
@@ -2162,7 +2195,7 @@ async function calibrarSI(id){
   if(isNaN(saldoRef)){toast('Informe o saldo na data','er');return;}
   // Soma todas as transações até a data de referência (inclusive)
   const soma=getTx()
-    .filter(t=>t.contaId===id&&t.data<=dataRef)
+    .filter(t=>t.contaId===idN&&t.data<=dataRef)
     .reduce((a,t)=>a+t.valor,0);
   // saldo_inicial = saldo_referência - soma_das_transações_até_essa_data
   const novoSI=parseFloat((saldoRef-soma).toFixed(2));
@@ -2203,8 +2236,8 @@ function addFiles(banco,files,flId){
       `<div class="fit"><span class="fitn" title="${f.name}">${f.name}</span>
        <span style="color:var(--t3);font-size:.65rem;flex-shrink:0">${(f.size/1024).toFixed(0)} KB</span></div>`);
   });
-  document.getElementById('btnProc').disabled=
-    pending.santander.length+pending.itau.length===0;
+  const btnId=banco==='santander'?'btnProcSant':'btnProcItau';
+  document.getElementById(btnId).disabled=pending[banco].length===0;
 }
 
 function addLog(msg,t){
@@ -2214,270 +2247,359 @@ function addLog(msg,t){
   lg.scrollTop=lg.scrollHeight;
 }
 
-async function processarOFX(){
-  const btn=document.getElementById('btnProc');
-  const forcar=document.getElementById('chkForce').checked;
-  const LOTE=500;
-  btn.disabled=true;
-  addLog('Iniciando'+(forcar?' (forçar reimportação)':'')+'...','inf');
-  const contas=getContas();
+/* ═══════════════════════════════════════════════════════════════
+   SANTANDER — processamento e parse completamente independentes
+═══════════════════════════════════════════════════════════════ */
 
-  // Cache de FITIDs já em memória — deduplicação local, zero queries extras
-  const fitidsExistentes=new Set(_tx.map(t=>t.fitid).filter(Boolean));
-
-  const txsNovas=[]; // acumula todas as novas para adicionar ao cache local
-
-  for(const [banco,files] of Object.entries(pending)){
-    for(const file of files){
-      const text=await file.text();
-      const parsed=parseOFX(text,banco,contas);
-      if(!parsed.ok){addLog(`✗ ${file.name} — ${parsed.msg}`,'err');continue;}
-
-      addLog(`${file.name} — ${parsed.txs.length} transações encontradas...`,'inf');
-      if(parsed.matchType==='bank'||parsed.matchType==='nome'){
-        addLog(`  ⚠ Conta vinculada por fallback genérico: "${parsed.conta}". Cadastre o nº da conta (ACCTID: ${parsed.acctid}) para match exato.`,'war');
-      }
-
-      let rowsParaInserir;
-      let removidas=0;
-      let erroFatal=null;
-
-      if(forcar){
-        // Forçar: apaga existentes em lotes e reinsere todas
-        const fitids=parsed.txs.map(t=>t.fitid).filter(Boolean);
-        if(fitids.length && parsed.txs[0]?.contaId){
-          for(let i=0;i<fitids.length;i+=LOTE){
-            const {count}=await _SB.from('transacoes')
-              .delete().eq('conta_id',parsed.txs[0].contaId).in('fitid',fitids.slice(i,i+LOTE));
-            removidas+=(count||0);
-          }
-          // Remove do cache local também
-          const fitidSet=new Set(fitids);
-          _tx=_tx.filter(t=>!(t.contaId===parsed.txs[0].contaId&&fitidSet.has(t.fitid)));
-          fitids.forEach(f=>fitidsExistentes.delete(f));
-        }
-        rowsParaInserir=parsed.txs;
-      } else {
-        // Normal: deduplica em memória (sem query no banco)
-        rowsParaInserir=parsed.txs.filter(t=>!t.fitid||!fitidsExistentes.has(t.fitid));
-        const ignoradas=parsed.txs.length-rowsParaInserir.length;
-        if(ignoradas>0) addLog(`  ${ignoradas} duplicatas ignoradas (já importadas).`,'inf');
-      }
-
-      if(!rowsParaInserir.length){
-        addLog(`✓ ${file.name} — nada novo para importar.`,'ok');
-        continue;
-      }
-
-      // Insere em lotes
-      const rows=rowsParaInserir.map(t=>({
-        conta_id:t.contaId, data:t.data, descricao:t.desc,
-        valor:t.valor, tipo:t.tipo, fitid:t.fitid||null
-      }));
-
-      for(let i=0;i<rows.length;i+=LOTE){
-        addLog(`  Inserindo ${i+1}–${Math.min(i+LOTE,rows.length)} de ${rows.length}...`,'inf');
-        const {error}=await _SB.from('transacoes').upsert(rows.slice(i,i+LOTE),{onConflict:'conta_id,fitid',ignoreDuplicates:true});
-        if(error){erroFatal=error;break;}
-      }
-      if(erroFatal){addLog(`✗ ${file.name} — Erro: ${erroFatal.message}`,'err');continue;}
-
-      // Atualiza cache local imediatamente — sem recarregar tudo do banco
-      rowsParaInserir.forEach(t=>{
-        txsNovas.push(t);
-        if(t.fitid) fitidsExistentes.add(t.fitid);
-      });
-
-      await _SB.from('importacoes').insert({
-        arquivo:file.name,
-        banco:banco.charAt(0).toUpperCase()+banco.slice(1),
-        qtd_transacoes:rowsParaInserir.length, status:'ok'
-      });
-
-      const extra=forcar&&removidas>0?` (${removidas} substituídas)`:'';
-      addLog(`✓ ${file.name} — ${rowsParaInserir.length} novas transações para "${parsed.conta}"${extra}`,'ok');
-    }
-  }
-
-  // Recarrega todos os dados do banco — garante que UI reflete exatamente o que foi salvo
-  await loadAllData();
-
-  pending.santander=[];pending.itau=[];
-  document.getElementById('flSant').innerHTML='';
-  document.getElementById('flItau').innerHTML='';
-  document.getElementById('chkForce').checked=false;
-  btn.disabled=false;
-  addLog(`Concluído! ${txsNovas.length} transações adicionadas.`,'inf');
-  renderHist();renderDash();renderMov();
-}
-
-function parseOFX(text,banco,contas){
+function parseOFXSantander(text, contas){
   try{
+    // Lê campos de identificação do arquivo
+    const bankIdMatch=text.match(/<BANKID>\s*([^\r\n<]+)/i);
+    const bankId=(bankIdMatch?bankIdMatch[1].trim():'').replace(/\D/g,'');
+    // Rejeita arquivo de outro banco (Itaú = 341 / 0341)
+    if(bankId&&!bankId.endsWith('033')){
+      return{ok:false,msg:`Este arquivo é de outro banco (BANKID: ${bankId}). Use a aba correta para importá-lo.`};
+    }
     const acctMatch=text.match(/<ACCTID>\s*([^\r\n<]+)/i);
     const acctNum=acctMatch?acctMatch[1].trim():'';
     const acctDigits=acctNum.replace(/\D/g,'');
-    const bankIdMatch=text.match(/<BANKID>\s*([^\r\n<]+)/i);
-    const bankId=(bankIdMatch?bankIdMatch[1].trim().replace(/^0+/,''):'');
-    const orgMatch=text.match(/<ORG>\s*([^\r\n<]+)/i);
-    const org=(orgMatch?orgMatch[1].trim():'').toUpperCase();
-    const branchMatch=text.match(/<BRANCHID>\s*([^\r\n<]+)/i);
-    const branchId=(branchMatch?branchMatch[1].trim().replace(/\D/g,''):'');
-    const autoSantander=bankId==='33'||bankId==='033'||org.includes('SANTANDER');
-    const autoItau=bankId==='341'||org.includes('ITA');
-    const bancoNorm=banco.toLowerCase();
-    const isSantander=bancoNorm.includes('santander')||autoSantander;
-    const isItau=bancoNorm.includes('itaú')||bancoNorm.includes('itau')||autoItau;
+
+    // Filtra apenas contas Santander ativas
+    const contasSant=contas.filter(c=>c.ativo&&c.banco.toLowerCase().includes('santander'));
+    if(!contasSant.length) return {ok:false,msg:'Nenhuma conta Santander cadastrada. Cadastre antes de importar.'};
+
     let conta=null;
-    let matchType='none'; // 'exact'|'agencia'|'branch'|'bank'|'nome'
+    let matchType='none';
+
+    // Passo 1: match EXATO pelo ACCTID completo
     if(acctDigits){
-      // Passo 1: match EXATO (prioridade máxima — evita false-positive por endsWith)
-      conta=contas.find(c=>{
-        if(!c.ativo) return false;
-        const cb=c.banco.toLowerCase();
-        const bancoOk=isSantander ? cb.includes('santander') : (cb.includes('itaú')||cb.includes('itau'));
-        if(!bancoOk||!c.conta) return false;
-        const contaDigits=c.conta.replace(/\D/g,'');
-        return contaDigits && acctDigits===contaDigits;
+      conta=contasSant.find(c=>{
+        if(!c.conta) return false;
+        const cd=c.conta.replace(/\D/g,'');
+        return cd && acctDigits===cd;
       });
       if(conta) matchType='exact';
-      // Passo 2: endsWith — somente se nenhum match exato encontrado
-      if(!conta){
-        conta=contas.find(c=>{
-          if(!c.ativo) return false;
-          const cb=c.banco.toLowerCase();
-          const bancoOk=isSantander ? cb.includes('santander') : (cb.includes('itaú')||cb.includes('itau'));
-          if(!bancoOk||!c.conta) return false;
-          const contaDigits=c.conta.replace(/\D/g,'');
-          return contaDigits && acctDigits.endsWith(contaDigits);
-        });
-        if(conta) matchType='exact';
-      }
     }
-    if(!conta && acctDigits && isSantander){
-      // Passo 2a: Santander — match exato por conta (ACCTID começa com agência)
-      const candidatosAgSant=contas.filter(c=>{
-        if(!c.ativo||!c.agencia) return false;
-        const cb=c.banco.toLowerCase();
-        if(!cb.includes('santander')) return false;
+
+    // Passo 2: endsWith — ACCTID do arquivo termina com o número da conta
+    if(!conta && acctDigits){
+      conta=contasSant.find(c=>{
+        if(!c.conta) return false;
+        const cd=c.conta.replace(/\D/g,'');
+        return cd && acctDigits.endsWith(cd);
+      });
+      if(conta) matchType='exact';
+    }
+
+    // Passo 3: match por agência — ACCTID Santander começa com os 4 dígitos da agência
+    if(!conta && acctDigits){
+      const candidatos=contasSant.filter(c=>{
+        if(!c.agencia) return false;
         return acctDigits.startsWith(c.agencia.replace(/\D/g,''));
       });
-      // Só usa se identificar uma única conta — múltiplas contas na mesma agência exige match mais preciso
-      if(candidatosAgSant.length===1){conta=candidatosAgSant[0];matchType='agencia';}
-      else if(candidatosAgSant.length>1){
-        // Tenta match mais preciso: ACCTID completo começa com agência+conta
-        const exato=candidatosAgSant.find(c=>{
-          const ctClean=c.conta?c.conta.replace(/\D/g,''):'';
-          return ctClean && acctDigits===ctClean;
+      if(candidatos.length===1){
+        conta=candidatos[0]; matchType='agencia';
+      } else if(candidatos.length>1){
+        // Mais de uma conta na mesma agência → tenta match completo agência+conta
+        const exato=candidatos.find(c=>{
+          const cd=c.conta?c.conta.replace(/\D/g,''):'';
+          return cd && acctDigits===cd;
         });
-        if(exato){conta=exato;matchType='agencia';}
-        // Se não, deixa sem match para retornar erro descritivo abaixo
+        if(exato){conta=exato; matchType='agencia';}
       }
     }
-    if(!conta && isItau){
-      // Passo 3a: Itaú — match por AGÊNCIA + CONTA juntos (mais preciso para múltiplas contas)
-      if(branchId && acctDigits){
-        conta=contas.find(c=>{
-          if(!c.ativo) return false;
-          const cb=c.banco.toLowerCase();
-          if(!cb.includes('itaú')&&!cb.includes('itau')) return false;
-          if(!c.agencia&&!c.conta) return false;
-          const agOk=!c.agencia||(branchId===c.agencia.replace(/\D/g,''));
-          const ctDigits=c.conta?c.conta.replace(/\D/g,''):'';
-          const ctOk=!ctDigits||(acctDigits===ctDigits||acctDigits.endsWith(ctDigits));
-          return agOk&&ctOk&&(c.agencia||c.conta);
-        });
-        if(conta) matchType='agencia';
-      }
-      // Passo 3b: Itaú — match só por AGÊNCIA (BRANCHID) quando conta não bater
-      if(!conta && branchId){
-        const porAgencia=contas.filter(c=>{
-          if(!c.ativo||!c.agencia) return false;
-          const cb=c.banco.toLowerCase();
-          if(!cb.includes('itaú')&&!cb.includes('itau')) return false;
-          return branchId===c.agencia.replace(/\D/g,'');
-        });
-        // Só usa se identificar uma única conta nessa agência
-        if(porAgencia.length===1){conta=porAgencia[0];matchType='branch';}
-      }
+
+    // Passo 4: fallback — só usa se houver UMA única conta Santander ativa
+    if(!conta && contasSant.length===1){
+      conta=contasSant[0]; matchType='bank';
     }
+
     if(!conta){
-      // Fallback por banco — só usa se houver UMA única conta desse banco ativo
-      // Com múltiplas contas, o match genérico causaria associação errada
-      const candidatosBanco=contas.filter(c=>{
-        if(!c.ativo) return false;
-        const cb=c.banco.toLowerCase();
-        if(isSantander) return cb.includes('santander');
-        if(isItau) return cb.includes('itaú')||cb.includes('itau');
-        return false;
-      });
-      if(candidatosBanco.length===1){conta=candidatosBanco[0];matchType='bank';}
+      if(acctNum) return {ok:false,msg:`Santander — Conta não identificada. ACCTID do arquivo: "${acctNum}". Verifique o cadastro (Contas → editar).`};
+      return {ok:false,msg:'Santander — Não foi possível identificar a conta. Verifique o cadastro.'};
     }
-    if(!conta){
-      const candidatosNome=contas.filter(c=>{
-        if(!c.ativo) return false;
-        const cb=c.banco.toLowerCase();
-        const bn=bancoNorm;
-        return cb.includes(bn)||bn.includes(cb.replace(/itaú/,'itau'));
-      });
-      if(candidatosNome.length===1){conta=candidatosNome[0];matchType='nome';}
-    }
-    if(!conta){
-      // Verifica se ao menos existe alguma conta desse banco para dar erro mais preciso
-      const temBanco=contas.some(c=>{
-        if(!c.ativo) return false;
-        const cb=c.banco.toLowerCase();
-        if(isSantander) return cb.includes('santander');
-        if(isItau) return cb.includes('itaú')||cb.includes('itau');
-        return false;
-      });
-      if(temBanco&&acctNum) return {ok:false,msg:`Conta não identificada — ACCTID do arquivo: "${acctNum}". Verifique se o número da conta está correto no cadastro (Contas → editar).`};
-      return {ok:false,msg:`Nenhuma conta ${banco} cadastrada. Cadastre antes de importar.`};
-    }
+
+    // Parse das transações
     const txBlocks=[...text.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi)];
     const txs=[];
-    // Rendimentos — Santander e Itaú
     const _REND=/rend\s+pago\s+aplic\s+aut|rend\s+aplic|rendimento\s+aplic|juros\s+aplic|juros\s+cred|rendimento|juros/i;
-    // Transações automáticas de investimento — Santander (CONTAMAX) e Itaú (aplic/resgate auto)
-    // São pares que se anulam: dinheiro sai e volta; só o rendimento importa
-    const _AUTO_INV=/contamax|aplic\s*aut[oa]|aplicacao\s+aut|aplic\s+automatica|resgate\s+aut[oa]|resgate\s+automatico|resgate\s+prog|bloqueio\s+pix|desbloqueio\s+pix/i;
-    const campo=(bl,tag)=>{
-      const m=bl.match(new RegExp('<'+tag+'>\\s*([^\\r\\n<]+)','i'));
-      return m?m[1].trim():'';
-    };
-    const parseBRL=s=>{
-      const str=(s||'0').trim();
-      if(str.includes(',')) return parseFloat(str.replace(/\./g,'').replace(',','.'));
-      return parseFloat(str);
-    };
-    // Entradas de saldo (não são transações reais) — variantes Santander e Itaú
-    const _SALDO_ANT=/saldo\s+anterior|saldo\s+do\s+dia|saldo\s+inicial|saldo\s+em\s+\d|saldo\s+devedor/i;
+    const _AUTO=/contamax|aplic\s*aut[oa]|aplicacao\s+aut|aplic\s+automatica|resgate\s+aut[oa]|resgate\s+automatico|resgate\s+prog|bloqueio\s+pix|desbloqueio\s+pix/i;
+    const _SALDO=/saldo\s+anterior|saldo\s+do\s+dia|saldo\s+inicial|saldo\s+em\s+\d|saldo\s+devedor/i;
+    const campo=(bl,tag)=>{const m=bl.match(new RegExp('<'+tag+'>\\s*([^\\r\\n<]+)','i'));return m?m[1].trim():''};
+    const parseBRL=s=>{const str=(s||'0').trim();return str.includes(',')?parseFloat(str.replace(/\./g,'').replace(',','.')):parseFloat(str)};
     for(const b of txBlocks){
       const bl=b[1];
       const fitid=campo(bl,'FITID');
       const trntype=campo(bl,'TRNTYPE').toUpperCase();
       const dtRaw=campo(bl,'DTPOSTED').replace(/[^\d]/g,'').slice(0,8);
-      const valorStr=campo(bl,'TRNAMT');
-      const valor=parseBRL(valorStr);
+      const valor=parseBRL(campo(bl,'TRNAMT'));
       const memo=campo(bl,'MEMO');
       const name=campo(bl,'NAME');
-      if(!dtRaw||dtRaw.length<8) continue;
-      if(isNaN(valor)) continue;
-      if(valor===0) continue;
+      if(!dtRaw||dtRaw.length<8||isNaN(valor)||valor===0) continue;
       const data=`${dtRaw.slice(0,4)}-${dtRaw.slice(4,6)}-${dtRaw.slice(6,8)}`;
       const desc=(memo||name||'').replace(/\s+/g,' ').trim();
-      if(_SALDO_ANT.test(desc)) continue;
-      if(_AUTO_INV.test(desc)) continue; // pula aplic/resgate automático (anulam-se)
+      if(_SALDO.test(desc)||_AUTO.test(desc)) continue;
       let tipo=valor>=0?'receita':'despesa';
-      // Rendimento: por descrição ou por TRNTYPE=INT/DIV
       if(_REND.test(desc)||trntype==='INT'||trntype==='DIV') tipo='rendimento';
-      // Transferência: TRNTYPE=XFER indica transferência entre contas próprias
       if(trntype==='XFER') tipo='transferencia';
-      txs.push({contaId:conta.id, fitid:fitid||null, data, desc, valor, tipo});
+      txs.push({contaId:conta.id,fitid:fitid||null,data,desc,valor,tipo});
     }
-    return {ok:true, txs, conta:conta.empresa, acctid:acctNum, matchType, msg:''};
+    return {ok:true,txs,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
   }catch(e){
-    return {ok:false, msg:'Erro ao ler OFX: '+e.message};
+    return {ok:false,msg:'Santander — Erro ao ler OFX: '+e.message};
   }
+}
+
+async function processarSantander(){
+  const btn=document.getElementById('btnProcSant');
+  const forcar=document.getElementById('chkForce').checked;
+  const LOTE=500;
+  btn.disabled=true;
+  addLog('[SANTANDER] Iniciando'+(forcar?' (forçar reimportação)':'')+'...','inf');
+  const contas=getContas();
+
+  // Deduplicação isolada: somente FITIDs de contas Santander, chave composta contaId|fitid
+  const idsSant=new Set(
+    contas.filter(c=>c.ativo&&c.banco.toLowerCase().includes('santander')).map(c=>c.id)
+  );
+  const fitidsExistentes=new Set(
+    _tx.filter(t=>idsSant.has(t.contaId)&&t.fitid).map(t=>`${t.contaId}|${t.fitid}`)
+  );
+
+  const txsNovas=[];
+
+  for(const file of pending.santander){
+    const text=await file.text();
+    const parsed=parseOFXSantander(text,contas);
+    if(!parsed.ok){addLog(`✗ ${file.name} — ${parsed.msg}`,'err');continue;}
+
+    addLog(`${file.name} — ${parsed.txs.length} transações encontradas (${parsed.conta})...`,'inf');
+    if(parsed.matchType==='bank') addLog(`  ⚠ Vinculado por fallback. ACCTID: ${parsed.acctid} — confirme no cadastro.`,'war');
+
+    let rowsParaInserir;
+    let removidas=0;
+    let erroFatal=null;
+
+    if(forcar){
+      const fitids=parsed.txs.map(t=>t.fitid).filter(Boolean);
+      if(fitids.length&&parsed.txs[0]?.contaId){
+        for(let i=0;i<fitids.length;i+=LOTE){
+          const {count}=await _SB.from('transacoes_santander').delete().eq('conta_id',parsed.txs[0].contaId).in('fitid',fitids.slice(i,i+LOTE));
+          removidas+=(count||0);
+        }
+        const fs=new Set(fitids);
+        _tx=_tx.filter(t=>!(t.contaId===parsed.txs[0].contaId&&fs.has(t.fitid)));
+        fitids.forEach(f=>fitidsExistentes.delete(`${parsed.txs[0].contaId}|${f}`));
+      }
+      rowsParaInserir=parsed.txs;
+    } else {
+      rowsParaInserir=parsed.txs.filter(t=>!t.fitid||!fitidsExistentes.has(`${t.contaId}|${t.fitid}`));
+      const ig=parsed.txs.length-rowsParaInserir.length;
+      if(ig>0) addLog(`  ${ig} duplicatas ignoradas.`,'inf');
+    }
+
+    if(!rowsParaInserir.length){addLog(`✓ ${file.name} — nada novo.`,'ok');continue;}
+
+    const rows=rowsParaInserir.map(t=>({conta_id:t.contaId,data:t.data,descricao:t.desc,valor:t.valor,tipo:t.tipo,fitid:t.fitid||null}));
+    for(let i=0;i<rows.length;i+=LOTE){
+      addLog(`  Inserindo ${i+1}–${Math.min(i+LOTE,rows.length)} de ${rows.length}...`,'inf');
+      const {error}=await _SB.from('transacoes_santander').upsert(rows.slice(i,i+LOTE),{onConflict:'conta_id,fitid',ignoreDuplicates:true});
+      if(error){erroFatal=error;break;}
+    }
+    if(erroFatal){addLog(`✗ ${file.name} — Erro: ${erroFatal.message}`,'err');continue;}
+
+    rowsParaInserir.forEach(t=>{txsNovas.push(t);if(t.fitid)fitidsExistentes.add(`${t.contaId}|${t.fitid}`)});
+    await _SB.from('importacoes').insert({arquivo:file.name,banco:'Santander',qtd_transacoes:rowsParaInserir.length,status:'ok'});
+    const extra=forcar&&removidas>0?` (${removidas} substituídas)`:'';
+    addLog(`✓ ${file.name} — ${rowsParaInserir.length} transações para "${parsed.conta}"${extra}`,'ok');
+  }
+
+  await loadAllData();
+  pending.santander=[];
+  document.getElementById('flSant').innerHTML='';
+  document.getElementById('chkForce').checked=false;
+  btn.disabled=false;
+  addLog(`[SANTANDER] Concluído! ${txsNovas.length} transações adicionadas.`,'inf');
+  renderHist();renderDash();renderMov();renderSaldos();
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   ITAÚ — processamento e parse completamente independentes
+═══════════════════════════════════════════════════════════════ */
+
+function parseOFXItau(text, contas){
+  try{
+    // Lê campos de identificação do arquivo
+    const bankIdMatch=text.match(/<BANKID>\s*([^\r\n<]+)/i);
+    const bankId=(bankIdMatch?bankIdMatch[1].trim():'').replace(/\D/g,'');
+    // Rejeita arquivo de outro banco (Santander = 033)
+    if(bankId&&!bankId.endsWith('341')){
+      return{ok:false,msg:`Este arquivo é de outro banco (BANKID: ${bankId}). Use a aba correta para importá-lo.`};
+    }
+    const acctMatch=text.match(/<ACCTID>\s*([^\r\n<]+)/i);
+    const acctNum=acctMatch?acctMatch[1].trim():'';
+    const acctDigits=acctNum.replace(/\D/g,'');
+    const branchMatch=text.match(/<BRANCHID>\s*([^\r\n<]+)/i);
+    const branchId=branchMatch?branchMatch[1].trim().replace(/\D/g,''):'';
+
+    // Filtra apenas contas Itaú ativas
+    const contasItau=contas.filter(c=>c.ativo&&(c.banco.toLowerCase().includes('itaú')||c.banco.toLowerCase().includes('itau')));
+    if(!contasItau.length) return {ok:false,msg:'Nenhuma conta Itaú cadastrada. Cadastre antes de importar.'};
+
+    let conta=null;
+    let matchType='none';
+
+    // Passo 1: match EXATO pelo ACCTID completo (agência+conta = 10 dígitos)
+    if(acctDigits){
+      conta=contasItau.find(c=>{
+        if(!c.conta) return false;
+        const cd=c.conta.replace(/\D/g,'');
+        return cd && acctDigits===cd;
+      });
+      if(conta) matchType='exact';
+    }
+
+    // Passo 2: endsWith — ACCTID do arquivo termina com o número da conta cadastrada
+    if(!conta && acctDigits){
+      conta=contasItau.find(c=>{
+        if(!c.conta) return false;
+        const cd=c.conta.replace(/\D/g,'');
+        return cd && acctDigits.endsWith(cd);
+      });
+      if(conta) matchType='exact';
+    }
+
+    // Passo 3: match por AGÊNCIA (BRANCHID) + CONTA juntos
+    if(!conta && branchId && acctDigits){
+      conta=contasItau.find(c=>{
+        if(!c.agencia&&!c.conta) return false;
+        const agOk=!c.agencia||(branchId===c.agencia.replace(/\D/g,''));
+        const cd=c.conta?c.conta.replace(/\D/g,''):'';
+        const ctOk=!cd||(acctDigits===cd||acctDigits.endsWith(cd));
+        return agOk&&ctOk;
+      });
+      if(conta) matchType='agencia';
+    }
+
+    // Passo 4: match só por AGÊNCIA (BRANCHID) — único nessa agência
+    if(!conta && branchId){
+      const porAg=contasItau.filter(c=>c.agencia&&branchId===c.agencia.replace(/\D/g,''));
+      if(porAg.length===1){conta=porAg[0];matchType='branch';}
+    }
+
+    // Passo 5: fallback — só usa se houver UMA única conta Itaú ativa
+    if(!conta && contasItau.length===1){
+      conta=contasItau[0]; matchType='bank';
+    }
+
+    if(!conta){
+      if(acctNum) return {ok:false,msg:`Itaú — Conta não identificada. ACCTID do arquivo: "${acctNum}" / Agência: "${branchId}". Verifique o cadastro (Contas → editar).`};
+      return {ok:false,msg:'Itaú — Não foi possível identificar a conta. Verifique o cadastro.'};
+    }
+
+    // Parse das transações
+    const txBlocks=[...text.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi)];
+    const txs=[];
+    const _REND=/rend\s+pago\s+aplic\s+aut|rend\s+aplic|rendimento\s+aplic|juros\s+aplic|juros\s+cred|rendimento|juros/i;
+    const _AUTO=/aplic\s*aut[oa]|aplicacao\s+aut|aplic\s+automatica|resgate\s+aut[oa]|resgate\s+automatico|resgate\s+prog|bloqueio\s+pix|desbloqueio\s+pix/i;
+    const _SALDO=/saldo\s+anterior|saldo\s+do\s+dia|saldo\s+inicial|saldo\s+em\s+\d|saldo\s+devedor/i;
+    const campo=(bl,tag)=>{const m=bl.match(new RegExp('<'+tag+'>\\s*([^\\r\\n<]+)','i'));return m?m[1].trim():''};
+    const parseBRL=s=>{const str=(s||'0').trim();return str.includes(',')?parseFloat(str.replace(/\./g,'').replace(',','.')):parseFloat(str)};
+    for(const b of txBlocks){
+      const bl=b[1];
+      const fitid=campo(bl,'FITID');
+      const trntype=campo(bl,'TRNTYPE').toUpperCase();
+      const dtRaw=campo(bl,'DTPOSTED').replace(/[^\d]/g,'').slice(0,8);
+      const valor=parseBRL(campo(bl,'TRNAMT'));
+      const memo=campo(bl,'MEMO');
+      const name=campo(bl,'NAME');
+      if(!dtRaw||dtRaw.length<8||isNaN(valor)||valor===0) continue;
+      const data=`${dtRaw.slice(0,4)}-${dtRaw.slice(4,6)}-${dtRaw.slice(6,8)}`;
+      const desc=(memo||name||'').replace(/\s+/g,' ').trim();
+      if(_SALDO.test(desc)||_AUTO.test(desc)) continue;
+      let tipo=valor>=0?'receita':'despesa';
+      if(_REND.test(desc)||trntype==='INT'||trntype==='DIV') tipo='rendimento';
+      if(trntype==='XFER') tipo='transferencia';
+      txs.push({contaId:conta.id,fitid:fitid||null,data,desc,valor,tipo});
+    }
+    return {ok:true,txs,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
+  }catch(e){
+    return {ok:false,msg:'Itaú — Erro ao ler OFX: '+e.message};
+  }
+}
+
+async function processarItau(){
+  const btn=document.getElementById('btnProcItau');
+  const forcar=document.getElementById('chkForce').checked;
+  const LOTE=500;
+  btn.disabled=true;
+  addLog('[ITAÚ] Iniciando'+(forcar?' (forçar reimportação)':'')+'...','inf');
+  const contas=getContas();
+
+  // Deduplicação isolada: somente FITIDs de contas Itaú, chave composta contaId|fitid
+  const idsItau=new Set(
+    contas.filter(c=>c.ativo&&(c.banco.toLowerCase().includes('itaú')||c.banco.toLowerCase().includes('itau'))).map(c=>c.id)
+  );
+  const fitidsExistentes=new Set(
+    _tx.filter(t=>idsItau.has(t.contaId)&&t.fitid).map(t=>`${t.contaId}|${t.fitid}`)
+  );
+
+  const txsNovas=[];
+
+  for(const file of pending.itau){
+    const text=await file.text();
+    const parsed=parseOFXItau(text,contas);
+    if(!parsed.ok){addLog(`✗ ${file.name} — ${parsed.msg}`,'err');continue;}
+
+    addLog(`${file.name} — ${parsed.txs.length} transações encontradas (${parsed.conta})...`,'inf');
+    if(parsed.matchType==='bank'||parsed.matchType==='branch') addLog(`  ⚠ Vinculado por fallback. ACCTID: ${parsed.acctid} — confirme no cadastro.`,'war');
+
+    let rowsParaInserir;
+    let removidas=0;
+    let erroFatal=null;
+
+    if(forcar){
+      const fitids=parsed.txs.map(t=>t.fitid).filter(Boolean);
+      if(fitids.length&&parsed.txs[0]?.contaId){
+        for(let i=0;i<fitids.length;i+=LOTE){
+          const {count}=await _SB.from('transacoes_itau').delete().eq('conta_id',parsed.txs[0].contaId).in('fitid',fitids.slice(i,i+LOTE));
+          removidas+=(count||0);
+        }
+        const fs=new Set(fitids);
+        _tx=_tx.filter(t=>!(t.contaId===parsed.txs[0].contaId&&fs.has(t.fitid)));
+        fitids.forEach(f=>fitidsExistentes.delete(`${parsed.txs[0].contaId}|${f}`));
+      }
+      rowsParaInserir=parsed.txs;
+    } else {
+      rowsParaInserir=parsed.txs.filter(t=>!t.fitid||!fitidsExistentes.has(`${t.contaId}|${t.fitid}`));
+      const ig=parsed.txs.length-rowsParaInserir.length;
+      if(ig>0) addLog(`  ${ig} duplicatas ignoradas.`,'inf');
+    }
+
+    if(!rowsParaInserir.length){addLog(`✓ ${file.name} — nada novo.`,'ok');continue;}
+
+    const rows=rowsParaInserir.map(t=>({conta_id:t.contaId,data:t.data,descricao:t.desc,valor:t.valor,tipo:t.tipo,fitid:t.fitid||null}));
+    for(let i=0;i<rows.length;i+=LOTE){
+      addLog(`  Inserindo ${i+1}–${Math.min(i+LOTE,rows.length)} de ${rows.length}...`,'inf');
+      const {error}=await _SB.from('transacoes_itau').upsert(rows.slice(i,i+LOTE),{onConflict:'conta_id,fitid',ignoreDuplicates:true});
+      if(error){erroFatal=error;break;}
+    }
+    if(erroFatal){addLog(`✗ ${file.name} — Erro: ${erroFatal.message}`,'err');continue;}
+
+    rowsParaInserir.forEach(t=>{txsNovas.push(t);if(t.fitid)fitidsExistentes.add(`${t.contaId}|${t.fitid}`)});
+    await _SB.from('importacoes').insert({arquivo:file.name,banco:'Itaú',qtd_transacoes:rowsParaInserir.length,status:'ok'});
+    const extra=forcar&&removidas>0?` (${removidas} substituídas)`:'';
+    addLog(`✓ ${file.name} — ${rowsParaInserir.length} transações para "${parsed.conta}"${extra}`,'ok');
+  }
+
+  await loadAllData();
+  pending.itau=[];
+  document.getElementById('flItau').innerHTML='';
+  document.getElementById('chkForce').checked=false;
+  btn.disabled=false;
+  addLog(`[ITAÚ] Concluído! ${txsNovas.length} transações adicionadas.`,'inf');
+  renderHist();renderDash();renderMov();renderSaldos();
 }
 
 function renderHist(){
@@ -2623,11 +2745,12 @@ function limparBD(){
 async function executarLimpar(){
   if(!document.getElementById('chkConfLimpar').checked) return;
   // Supabase exige WHERE clause — usa gte(id,0) para apagar tudo com segurança
-  const [e1, e2] = await Promise.all([
-    _SB.from('transacoes').delete().gte('id', 0),
+  const [e1, e2, e3] = await Promise.all([
+    _SB.from('transacoes_santander').delete().gte('id', 0),
+    _SB.from('transacoes_itau').delete().gte('id', 0),
     _SB.from('importacoes').delete().gte('id', 0)
   ]);
-  const err = e1.error || e2.error;
+  const err = e1.error || e2.error || e3.error;
   if(err){toast('Erro ao limpar: '+err.message,'er');return;}
   // Zera saldos iniciais
   await _SB.from('contas').update({saldo_inicial:0}).gte('id',0);
@@ -2651,7 +2774,8 @@ function initApp(){
   document.getElementById('modCanc').addEventListener('click',closeMod);
   document.getElementById('modConta').addEventListener('click',e=>{if(e.target===document.getElementById('modConta'))closeMod()});
   document.getElementById('modSave').addEventListener('click',salvarConta);
-  document.getElementById('btnProc').addEventListener('click',processarOFX);
+  document.getElementById('btnProcSant').addEventListener('click', processarSantander);
+  document.getElementById('btnProcItau').addEventListener('click', processarItau);
   renderPendingBadge();
   renderDash();
 }
@@ -2745,18 +2869,20 @@ async function importarNovosOFX(){
         const texto = await resp.text();
         const banco = arq.banco;
         const contas = getContas();
-        const res = parseOFX(texto, banco, contas);
+        const isSant = banco.toLowerCase().includes('santander');
+        const res = isSant ? parseOFXSantander(texto, contas) : parseOFXItau(texto, contas);
         if(res.ok && res.txs && res.txs.length){
           const fitids = res.txs.map(t=>t.fitid).filter(Boolean);
           let novasTx = res.txs;
+          const tabelaAuto = isSant ? 'transacoes_santander' : 'transacoes_itau';
           if(fitids.length && res.txs[0]?.contaId){
-            const { data:exist } = await _SB.from('transacoes')
+            const { data:exist } = await _SB.from(tabelaAuto)
               .select('fitid').eq('conta_id', res.txs[0].contaId).in('fitid', fitids);
             const existSet = new Set((exist||[]).map(e=>e.fitid));
             novasTx = res.txs.filter(t=>!t.fitid||!existSet.has(t.fitid));
           }
           if(novasTx.length){
-            await _SB.from('transacoes').upsert(novasTx.map(t=>({
+            await _SB.from(tabelaAuto).upsert(novasTx.map(t=>({
               conta_id:t.contaId, data:t.data, descricao:t.desc,
               valor:t.valor, tipo:t.tipo, fitid:t.fitid||null
             })),{onConflict:'conta_id,fitid',ignoreDuplicates:true});
