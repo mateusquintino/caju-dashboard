@@ -1076,9 +1076,10 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
         <div class="mft"><label>Banco</label>
           <select class="fi2" id="fBnk"><option value="">Selecione</option><option>Santander</option><option>Itaú</option></select>
         </div>
-        <div class="mft"><label>Agência</label><input class="fi2" id="fAg" placeholder="0000"/></div>
+        <div class="mft"><label>Agência (4 dígitos)</label><input class="fi2" id="fAg" placeholder="0000" maxlength="6"/></div>
       </div>
-      <div class="mft"><label>Número da Conta</label><input class="fi2" id="fCt" placeholder="00000-0"/></div>
+      <div class="mft"><label>Número da Conta (com ou sem hífen)</label><input class="fi2" id="fCt" placeholder="ex: 13004620-4"/></div>
+      <div style="font-size:.72rem;color:var(--t3);margin-top:.3rem;line-height:1.4">O sistema junta agência + conta automaticamente para identificar o OFX do banco (não precisa digitar agência no campo da conta).</div>
     </div>
     <div class="mfo">
       <button class="bs" id="modCanc">Cancelar</button>
@@ -1142,6 +1143,18 @@ function getContas(){ return _contas; }
 function getTx()    { return _tx; }
 function getImps()  { return _imps; }
 
+// Carga rápida: só contas e importações. Suficiente pro Dashboard
+// (que usa RPC dashboard_saldos no servidor) e pras telas Contas/Saldos.
+async function loadEssentialData(){
+  const [cr,ir] = await Promise.all([
+    _SB.from('contas').select('*').order('id'),
+    _SB.from('importacoes').select('*').order('data_importacao',{ascending:false}).limit(1000)
+  ]);
+  if(cr.error) throw cr.error;
+  _contas = (cr.data||[]).map(mapConta);
+  _imps   = ir.data||[];
+}
+
 async function loadAllData(){
   let tentativas = 3;
   while(tentativas-- > 0){
@@ -1154,31 +1167,52 @@ async function loadAllData(){
       if(tentativas > 0) await new Promise(r=>setTimeout(r,600));
       continue;
     }
-    // Transações — busca em paralelo nas tabelas Santander e Itaú
-    // (paginação de 1000 em 1000 — limite do PostgREST)
+    // Transações — busca em paralelo nas tabelas Santander e Itaú.
+    // Paginação de 1000 em 1000 (limite do PostgREST), com RETRY por página:
+    // falhas transitórias (timeout/rede/throttling) usadas a ser engolidas
+    // silenciosamente e devolviam dados PARCIAIS — o dashboard calculava
+    // saldos errados sem avisar. Agora cada página tenta 3x antes de abortar
+    // e a função LANÇA exceção se faltarem dados, forçando o while externo
+    // a tentar de novo a carga inteira.
     const PAGE = 1000;
     async function fetchAllPages(tabela){
-      let rows = [], p = 0, more = true;
-      while(more){
-        const {data, error} = await _SB.from(tabela)
-          .select('*').order('data',{ascending:false})
-          .range(p*PAGE, (p+1)*PAGE-1);
-        if(error || !data || data.length===0){ more=false; break; }
-        rows = rows.concat(data);
-        more = data.length === PAGE;
+      let rows = [], p = 0;
+      while(true){
+        let pageData = null, lastErr = null;
+        for(let tentP = 0; tentP < 3; tentP++){
+          const {data, error} = await _SB.from(tabela)
+            .select('*').order('data',{ascending:false}).order('id',{ascending:false})
+            .range(p*PAGE, (p+1)*PAGE-1);
+          if(!error && data){ pageData = data; break; }
+          lastErr = error;
+          await new Promise(r=>setTimeout(r, 400*(tentP+1)));
+        }
+        if(pageData === null){
+          throw new Error(`Falha ao carregar página ${p} de ${tabela}: ${lastErr?.message||'sem detalhes'}`);
+        }
+        if(pageData.length === 0) break;
+        rows = rows.concat(pageData);
+        if(pageData.length < PAGE) break;
         p++;
+        if(p > 50){ throw new Error(`Paginação excedeu 50 páginas em ${tabela} — abortando.`); }
       }
       return rows;
     }
-    const [santTx, itauTx] = await Promise.all([
-      fetchAllPages('transacoes_santander'),
-      fetchAllPages('transacoes_itau')
-    ]);
-    const allTx = santTx.concat(itauTx);
-    _contas = (cr.data||[]).map(mapConta);
-    _tx     = allTx.map(mapTx);
-    _imps   = ir.data||[];
-    return;
+    try{
+      const [santTx, itauTx] = await Promise.all([
+        fetchAllPages('transacoes_santander'),
+        fetchAllPages('transacoes_itau')
+      ]);
+      const allTx = santTx.concat(itauTx);
+      _contas = (cr.data||[]).map(mapConta);
+      _tx     = allTx.map(mapTx);
+      _imps   = ir.data||[];
+      return;
+    }catch(e){
+      console.warn(`[loadAllData] tentativa restante ${tentativas}:`, e.message);
+      if(tentativas > 0){ await new Promise(r=>setTimeout(r, 800)); continue; }
+      throw e;
+    }
   }
 }
 
@@ -1599,50 +1633,47 @@ let currentPer='mes'
 let dataRangeIni=null  // 'YYYY-MM-DD' — início do período customizado
 let dataRangeFim=null  // 'YYYY-MM-DD' — fim do período customizado
 
-function calcSaldos(contas,txs,periodo){
+// Calcula p_ini e p_fim (formato YYYY-MM-DD) a partir do período selecionado.
+function calcPeriodoRange(periodo){
   const hoje=new Date();
-  const ano=hoje.getFullYear(),mes=hoje.getMonth()+1,dia=hoje.getDate();
-  const ontem=new Date(hoje); ontem.setDate(hoje.getDate()-1);
-  const semIni=new Date(hoje); semIni.setDate(hoje.getDate()-hoje.getDay());
-  semIni.setHours(0,0,0,0);
-
-  // Data de início do período — tudo antes disso compõe o saldo inicial dinâmico
-  let dataIni=null; // string 'YYYY-MM-DD' — transações com data < dataIni são "anteriores"
+  const ano=hoje.getFullYear(),mes=hoje.getMonth()+1;
   const pad=n=>String(n).padStart(2,'0');
   const fmt=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  if(periodo==='dia')         dataIni=fmt(hoje);
-  else if(periodo==='ontem')  dataIni=fmt(ontem);
-  else if(periodo==='semana') dataIni=fmt(semIni);
-  else if(periodo==='ano')    dataIni=`${ano}-01-01`;
-  else if(periodo==='custom'&&dataRangeIni)    dataIni=dataRangeIni;
-  else                        dataIni=`${ano}-${pad(mes)}-01`; // mensal
+  let p_ini, p_fim;
+  if(periodo==='dia'){ p_ini=p_fim=fmt(hoje); }
+  else if(periodo==='ontem'){ const o=new Date(hoje); o.setDate(hoje.getDate()-1); p_ini=p_fim=fmt(o); }
+  else if(periodo==='semana'){ const s=new Date(hoje); s.setDate(hoje.getDate()-hoje.getDay()); s.setHours(0,0,0,0); p_ini=fmt(s); p_fim=fmt(hoje); }
+  else if(periodo==='ano'){ p_ini=`${ano}-01-01`; p_fim=fmt(hoje); }
+  else if(periodo==='custom'&&dataRangeIni&&dataRangeFim){ p_ini=dataRangeIni; p_fim=dataRangeFim; }
+  else if(periodo==='custom'&&dataRangeIni){ p_ini=dataRangeIni; p_fim=fmt(hoje); }
+  else if(periodo==='custom'&&dataRangeFim){ p_ini='1900-01-01'; p_fim=dataRangeFim; }
+  else { p_ini=`${ano}-${pad(mes)}-01`; p_fim=fmt(hoje); }
+  return {p_ini, p_fim};
+}
 
-  const filtraTx=tx=>{
-    const d=new Date(tx.data+'T00:00:00');
-    if(periodo==='dia')    return d.getFullYear()===ano&&d.getMonth()+1===mes&&d.getDate()===dia;
-    if(periodo==='ontem')  return d.getFullYear()===ontem.getFullYear()&&d.getMonth()+1===ontem.getMonth()+1&&d.getDate()===ontem.getDate();
-    if(periodo==='semana') return d>=semIni&&d<=hoje;
-    if(periodo==='ano')    return d.getFullYear()===ano;
-    if(periodo==='custom'&&dataRangeIni&&dataRangeFim) return tx.data>=dataRangeIni&&tx.data<=dataRangeFim;
-    if(periodo==='custom'&&dataRangeIni) return tx.data>=dataRangeIni;
-    if(periodo==='custom'&&dataRangeFim) return tx.data<=dataRangeFim;
-    return d.getFullYear()===ano&&d.getMonth()+1===mes;
-  };
-
+// AGREGAÇÃO NO SERVIDOR: chama RPC dashboard_saldos. Retorna 1 linha por
+// conta em ~200ms independente do volume de transações. Antes baixava
+// todas as transações e calculava no cliente — não escalava com 39 contas.
+async function calcSaldos(contas, txs_ignorado, periodo){
+  const {p_ini, p_fim} = calcPeriodoRange(periodo);
+  const {data, error} = await _SB.rpc('dashboard_saldos', {p_ini, p_fim});
+  if(error){
+    console.error('[calcSaldos] RPC dashboard_saldos falhou:', error);
+    toast('Erro ao calcular saldos: '+error.message,'er');
+    return [];
+  }
+  const byId = new Map((data||[]).map(r => [r.conta_id, r]));
   return contas.filter(c=>c.ativo).map(c=>{
-    // Saldo inicial dinâmico: saldo cadastrado + todas as tx anteriores ao período
-    const txAntes=txs.filter(t=>t.contaId===c.id&&t.data<dataIni);
-    const saldoAcum=(c.saldoInicial||0)+txAntes.reduce((a,t)=>a+t.valor,0);
-
-    const ct=txs.filter(t=>t.contaId===c.id&&filtraTx(t));
-    const rec=ct.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
-    const desp=ct.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
-    const rend=ct.filter(t=>t.tipo==='rendimento').reduce((a,t)=>a+t.valor,0);
-    const trf=ct.filter(t=>t.tipo==='transferencia').reduce((a,t)=>a+t.valor,0);
+    const r = byId.get(c.id) || {};
+    const saldoAcum = parseFloat(r.saldo_inicial_acumulado || 0);
+    const rec = parseFloat(r.receitas || 0);
+    const desp = parseFloat(r.despesas || 0);
+    const rend = parseFloat(r.rendimentos || 0);
+    const trf = parseFloat(r.transferencias || 0);
     return {...c, saldoInicial:saldoAcum, receitas:rec, despesas:desp,
       rendimentos:rend, transferencias:trf,
-      saldo:saldoAcum+rec+desp+rend+trf}
-  })
+      saldo: saldoAcum + rec + desp + rend + trf};
+  });
 }
 
 /* ═══════════════════════════════════════════════
@@ -1879,11 +1910,11 @@ function renderChartRxD(mbData){
   });
 }
 
-function renderDash(){
+async function renderDash(){
   const btn=document.getElementById('rbtn');
   btn.classList.add('spin');
   const contas=getContas(),txs=getTx();
-  let rows=calcSaldos(contas,txs,currentPer);
+  let rows=await calcSaldos(contas,txs,currentPer);
   allRows=rows;
 
   // Popula e aplica filtro de empresa
@@ -2193,12 +2224,12 @@ async function calibrarSI(id){
   const saldoRef=parseFloat(valEl?.value);
   if(!dataRef){toast('Informe a data de referência','er');return;}
   if(isNaN(saldoRef)){toast('Informe o saldo na data','er');return;}
-  // Soma todas as transações até a data de referência (inclusive)
-  const soma=getTx()
-    .filter(t=>t.contaId===idN&&t.data<=dataRef)
-    .reduce((a,t)=>a+t.valor,0);
+  // Soma todas as transações até a data via RPC no servidor (não depende
+  // de _tx em memória, que pode estar parcial com volume grande).
+  const {data:soma, error}=await _SB.rpc('saldo_conta_ate',{p_conta_id:idN, p_data:dataRef});
+  if(error){toast('Erro ao calibrar: '+error.message,'er');return;}
   // saldo_inicial = saldo_referência - soma_das_transações_até_essa_data
-  const novoSI=parseFloat((saldoRef-soma).toFixed(2));
+  const novoSI=parseFloat((saldoRef-parseFloat(soma||0)).toFixed(2));
   siPend[id]=novoSI;
   await saveSI(id);
   // Atualiza o campo de saldo inicial na tela
@@ -2271,60 +2302,43 @@ function parseOFXSantander(text, contas){
     let conta=null;
     let matchType='none';
 
-    // Passo 1: match EXATO pelo ACCTID completo
+    // MATCH ESTRITO: ACCTID = agência (4 dig) + conta (sem hífen) — combinação
+    // exata. UI mostra agência e conta separados; o ACCTID é só interno.
     if(acctDigits){
-      conta=contasSant.find(c=>{
-        if(!c.conta) return false;
-        const cd=c.conta.replace(/\D/g,'');
-        return cd && acctDigits===cd;
-      });
-      if(conta) matchType='exact';
-    }
-
-    // Passo 2: endsWith — ACCTID do arquivo termina com o número da conta
-    if(!conta && acctDigits){
-      conta=contasSant.find(c=>{
-        if(!c.conta) return false;
-        const cd=c.conta.replace(/\D/g,'');
-        return cd && acctDigits.endsWith(cd);
-      });
-      if(conta) matchType='exact';
-    }
-
-    // Passo 3: match por agência — ACCTID Santander começa com os 4 dígitos da agência
-    if(!conta && acctDigits){
       const candidatos=contasSant.filter(c=>{
-        if(!c.agencia) return false;
-        return acctDigits.startsWith(c.agencia.replace(/\D/g,''));
+        if(!c.agencia||!c.conta) return false;
+        const acctidCalc=(c.agencia.replace(/\D/g,'')+c.conta.replace(/\D/g,''));
+        return acctidCalc===acctDigits;
       });
       if(candidatos.length===1){
-        conta=candidatos[0]; matchType='agencia';
+        conta=candidatos[0]; matchType='exact';
       } else if(candidatos.length>1){
-        // Mais de uma conta na mesma agência → tenta match completo agência+conta
-        const exato=candidatos.find(c=>{
-          const cd=c.conta?c.conta.replace(/\D/g,''):'';
-          return cd && acctDigits===cd;
-        });
-        if(exato){conta=exato; matchType='agencia';}
+        return {ok:false,msg:`Santander — ACCTID "${acctNum}" está cadastrado em ${candidatos.length} contas: ${candidatos.map(c=>c.empresa).join(', ')}. Corrija o cadastro (apenas UMA conta deve ter essa combinação agência+conta).`};
       }
     }
 
-    // Passo 4: fallback — só usa se houver UMA única conta Santander ativa
-    if(!conta && contasSant.length===1){
-      conta=contasSant[0]; matchType='bank';
-    }
-
     if(!conta){
-      if(acctNum) return {ok:false,msg:`Santander — Conta não identificada. ACCTID do arquivo: "${acctNum}". Verifique o cadastro (Contas → editar).`};
-      return {ok:false,msg:'Santander — Não foi possível identificar a conta. Verifique o cadastro.'};
+      if(acctNum) return {ok:false,msg:`Santander — ACCTID "${acctNum}" não cadastrado. Vá em Contas e cadastre a agência e o número da conta correspondentes (agência + conta sem hífen = ${acctNum}).`};
+      return {ok:false,msg:'Santander — OFX sem ACCTID. Arquivo inválido.'};
     }
 
     // Parse das transações
     const txBlocks=[...text.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi)];
     const txs=[];
-    const _REND=/rend\s+pago\s+aplic\s+aut|rend\s+aplic|rendimento\s+aplic|juros\s+aplic|juros\s+cred|rendimento|juros/i;
-    const _AUTO=/contamax|aplic\s*aut[oa]|aplicacao\s+aut|aplic\s+automatica|resgate\s+aut[oa]|resgate\s+automatico|resgate\s+prog|bloqueio\s+pix|desbloqueio\s+pix/i;
+    // _REND: rendimentos reais (juros/rendimento creditados por aplicações)
+    const _REND=/rend\s+pago\s+aplic\s+aut|rend\s+aplic|rendimento\s+aplic|juros\s+aplic|juros\s+cred|juros\s+sobre\s+cap|juros\s+credit/i;
+    // _AUTO: aplicações/resgates (CONTAMAX, CDB/RDB, LCI, LCA) e bloqueios PIX.
+    // OBS: o Santander emite "APLICACAO CDB/RDB" e "RESGATE CDB/RDB" no MEMO, então
+    // a regex inclui esses padrões também — sem isso, viram "despesa"/"receita" e
+    // inflam as KPIs do dashboard (mesmo que o saldo total continue batendo).
+    const _AUTO=/contamax|aplic[\s.]*autom|aplicacao\s+aut|aplic\s+automatica|resgate[\s.]*autom|resgate\s+automatico|resgate\s+prog|aplic[a-z]*\s+(?:cdb|rdb|lci|lca)|resgate\s+(?:cdb|rdb|lci|lca)|bloqueio\s+pix|desbloqueio\s+pix/i;
     const _SALDO=/saldo\s+anterior|saldo\s+do\s+dia|saldo\s+inicial|saldo\s+em\s+\d|saldo\s+devedor/i;
+    // _XFER_DESC: Santander usa TRNTYPE=CREDIT para transferências internas, não XFER.
+    // Detecta transferências pela descrição para classificar corretamente.
+    const _XFER_DESC=/transferencia\s+entre\s+contas|transf\s+valores?\s+p\/c\/c|transf\s+p\/c\/c\s|entre\s+contas\s+mesmo\s+titular|transf\s+mesmos?\s+titulares?/i;
+    // TRNTYPE que representam débito (saída de caixa)
+    const _TDEB=['DEBIT','CHECK','ATM','POS','PAYMENT','CASH','DIRECTDEBIT','REPEATPMT','FEE','SRVCHG'];
+    const _TCRED=['CREDIT','DEP','DIRECTDEP'];
     const campo=(bl,tag)=>{const m=bl.match(new RegExp('<'+tag+'>\\s*([^\\r\\n<]+)','i'));return m?m[1].trim():''};
     const parseBRL=s=>{const str=(s||'0').trim();return str.includes(',')?parseFloat(str.replace(/\./g,'').replace(',','.')):parseFloat(str)};
     for(const b of txBlocks){
@@ -2332,17 +2346,28 @@ function parseOFXSantander(text, contas){
       const fitid=campo(bl,'FITID');
       const trntype=campo(bl,'TRNTYPE').toUpperCase();
       const dtRaw=campo(bl,'DTPOSTED').replace(/[^\d]/g,'').slice(0,8);
-      const valor=parseBRL(campo(bl,'TRNAMT'));
+      // Usa let para permitir correção de sinal via TRNTYPE
+      let valor=parseBRL(campo(bl,'TRNAMT'));
       const memo=campo(bl,'MEMO');
       const name=campo(bl,'NAME');
       if(!dtRaw||dtRaw.length<8||isNaN(valor)||valor===0) continue;
       const data=`${dtRaw.slice(0,4)}-${dtRaw.slice(4,6)}-${dtRaw.slice(6,8)}`;
       const desc=(memo||name||'').replace(/\s+/g,' ').trim();
-      if(_SALDO.test(desc)||_AUTO.test(desc)) continue;
+      // Linha informativa de saldo (não-monetária) — descarta
+      if(_SALDO.test(desc)) continue;
+      // Correção de sinal: se o banco enviou TRNAMT positivo para um débito (violação OFX),
+      // força negativo. Créditos com TRNAMT negativo (estornos) mantêm o sinal original.
+      if(_TDEB.includes(trntype)&&valor>0) valor=-valor;
       let tipo=valor>=0?'receita':'despesa';
       if(_REND.test(desc)||trntype==='INT'||trntype==='DIV') tipo='rendimento';
-      if(trntype==='XFER') tipo='transferencia';
-      txs.push({contaId:conta.id,fitid:fitid||null,data,desc,valor,tipo});
+      // Santander usa TRNTYPE=CREDIT para transferências entre contas próprias.
+      // Detecta também pelo TRNTYPE=XFER (padrão OFX).
+      if(trntype==='XFER'||_XFER_DESC.test(desc)) tipo='transferencia';
+      // CONTAMAX, aplicações/resgates automáticos e bloqueios PIX MOVIMENTAM o C/C de fato
+      // (o OFX é do C/C, não consolidado com a aplicação). Classifica como transferência
+      // interna para que o saldo da conta reflita o extrato real do banco.
+      if(_AUTO.test(desc)) tipo='transferencia';
+      txs.push({contaId:conta.id,fitid:fitid||null,data,desc,valor,tipo,_trntype:trntype});
     }
     return {ok:true,txs,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
   }catch(e){
@@ -2375,6 +2400,25 @@ async function processarSantander(){
 
     addLog(`${file.name} — ${parsed.txs.length} transações encontradas (${parsed.conta})...`,'inf');
     if(parsed.matchType==='bank') addLog(`  ⚠ Vinculado por fallback. ACCTID: ${parsed.acctid} — confirme no cadastro.`,'war');
+    // ── Log detalhado por tipo ──────────────────────────────────────────
+    {
+      const fmtBRL=(v)=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+      const rec=parsed.txs.filter(t=>t.tipo==='receita');
+      const desp=parsed.txs.filter(t=>t.tipo==='despesa');
+      const rend=parsed.txs.filter(t=>t.tipo==='rendimento');
+      const trf=parsed.txs.filter(t=>t.tipo==='transferencia');
+      const sumV=arr=>arr.reduce((a,t)=>a+t.valor,0);
+      addLog(`  ↳ Receitas: ${rec.length} (${fmtBRL(sumV(rec))}) | Despesas: ${desp.length} (${fmtBRL(sumV(desp))}) | Rendimentos: ${rend.length} (${fmtBRL(sumV(rend))}) | Transf.: ${trf.length}`,'inf');
+      // Detecta possíveis anomalias: despesa com valor positivo
+      const anomalos=parsed.txs.filter(t=>t.tipo==='despesa'&&t.valor>0);
+      if(anomalos.length) addLog(`  ⚠ ${anomalos.length} despesa(s) com valor POSITIVO — verifique TRNTYPE no OFX!`,'war');
+      // Detecta TRNTYPE desconhecido
+      const tdeb=['DEBIT','CHECK','ATM','POS','PAYMENT','CASH','DIRECTDEBIT','REPEATPMT','FEE','SRVCHG'];
+      const tcred=['CREDIT','DEP','DIRECTDEP'];
+      const tconhecidos=new Set([...tdeb,...tcred,'XFER','INT','DIV','OTHER','TRANSFER','']);
+      const tiposDesconhecidos=[...new Set(parsed.txs.map(t=>t._trntype).filter(v=>!tconhecidos.has(v)))];
+      if(tiposDesconhecidos.length) addLog(`  ⚠ TRNTYPE desconhecido(s): ${tiposDesconhecidos.join(', ')} — pode indicar classificação errada`,'war');
+    }
 
     let rowsParaInserir;
     let removidas=0;
@@ -2450,60 +2494,39 @@ function parseOFXItau(text, contas){
     let conta=null;
     let matchType='none';
 
-    // Passo 1: match EXATO pelo ACCTID completo (agência+conta = 10 dígitos)
+    // MATCH ESTRITO: ACCTID = agência (4 dig) + conta (sem hífen) — combinação
+    // exata. UI mostra agência e conta separados; o ACCTID é só interno.
     if(acctDigits){
-      conta=contasItau.find(c=>{
-        if(!c.conta) return false;
-        const cd=c.conta.replace(/\D/g,'');
-        return cd && acctDigits===cd;
+      const candidatos=contasItau.filter(c=>{
+        if(!c.agencia||!c.conta) return false;
+        const acctidCalc=(c.agencia.replace(/\D/g,'')+c.conta.replace(/\D/g,''));
+        return acctidCalc===acctDigits;
       });
-      if(conta) matchType='exact';
-    }
-
-    // Passo 2: endsWith — ACCTID do arquivo termina com o número da conta cadastrada
-    if(!conta && acctDigits){
-      conta=contasItau.find(c=>{
-        if(!c.conta) return false;
-        const cd=c.conta.replace(/\D/g,'');
-        return cd && acctDigits.endsWith(cd);
-      });
-      if(conta) matchType='exact';
-    }
-
-    // Passo 3: match por AGÊNCIA (BRANCHID) + CONTA juntos
-    if(!conta && branchId && acctDigits){
-      conta=contasItau.find(c=>{
-        if(!c.agencia&&!c.conta) return false;
-        const agOk=!c.agencia||(branchId===c.agencia.replace(/\D/g,''));
-        const cd=c.conta?c.conta.replace(/\D/g,''):'';
-        const ctOk=!cd||(acctDigits===cd||acctDigits.endsWith(cd));
-        return agOk&&ctOk;
-      });
-      if(conta) matchType='agencia';
-    }
-
-    // Passo 4: match só por AGÊNCIA (BRANCHID) — único nessa agência
-    if(!conta && branchId){
-      const porAg=contasItau.filter(c=>c.agencia&&branchId===c.agencia.replace(/\D/g,''));
-      if(porAg.length===1){conta=porAg[0];matchType='branch';}
-    }
-
-    // Passo 5: fallback — só usa se houver UMA única conta Itaú ativa
-    if(!conta && contasItau.length===1){
-      conta=contasItau[0]; matchType='bank';
+      if(candidatos.length===1){
+        conta=candidatos[0]; matchType='exact';
+      } else if(candidatos.length>1){
+        return {ok:false,msg:`Itaú — ACCTID "${acctNum}" está cadastrado em ${candidatos.length} contas: ${candidatos.map(c=>c.empresa).join(', ')}. Corrija o cadastro (apenas UMA conta deve ter essa combinação agência+conta).`};
+      }
     }
 
     if(!conta){
-      if(acctNum) return {ok:false,msg:`Itaú — Conta não identificada. ACCTID do arquivo: "${acctNum}" / Agência: "${branchId}". Verifique o cadastro (Contas → editar).`};
-      return {ok:false,msg:'Itaú — Não foi possível identificar a conta. Verifique o cadastro.'};
+      if(acctNum) return {ok:false,msg:`Itaú — ACCTID "${acctNum}" não cadastrado (agência ${branchId||'?'}). Vá em Contas e cadastre a agência e o número da conta correspondentes (agência + conta sem hífen = ${acctNum}).`};
+      return {ok:false,msg:'Itaú — OFX sem ACCTID. Arquivo inválido.'};
     }
 
     // Parse das transações
     const txBlocks=[...text.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi)];
     const txs=[];
-    const _REND=/rend\s+pago\s+aplic\s+aut|rend\s+aplic|rendimento\s+aplic|juros\s+aplic|juros\s+cred|rendimento|juros/i;
-    const _AUTO=/aplic\s*aut[oa]|aplicacao\s+aut|aplic\s+automatica|resgate\s+aut[oa]|resgate\s+automatico|resgate\s+prog|bloqueio\s+pix|desbloqueio\s+pix/i;
+    // _REND: rendimentos reais (juros/rendimento creditados por aplicações)
+    const _REND=/rend\s+pago\s+aplic\s+aut|rend\s+aplic|rendimento\s+aplic|juros\s+aplic|juros\s+cred|juros\s+sobre\s+cap|juros\s+credit/i;
+    // _AUTO: aplicações/resgates automáticos que não impactam fluxo de caixa (Itaú: CDB, LCI, LCA, etc.)
+    const _AUTO=/aplic[\s.]*autom|aplicacao\s+aut|aplic\s+automatica|resgate[\s.]*autom|resgate\s+automatico|resgate\s+prog|bloqueio\s+pix|desbloqueio\s+pix|aplic\s+cdb|resgate\s+cdb|aplic\s+lci|resgate\s+lci|aplic\s+lca|resgate\s+lca/i;
     const _SALDO=/saldo\s+anterior|saldo\s+do\s+dia|saldo\s+inicial|saldo\s+em\s+\d|saldo\s+devedor/i;
+    // _XFER_DESC: detecta transferências internas pela descrição (bancos usam TRNTYPE=CREDIT/DEBIT para TEC)
+    const _XFER_DESC=/transferencia\s+entre\s+contas|transf\s+valores?\s+p\/c\/c|transf\s+p\/c\/c\s|entre\s+contas\s+mesmo\s+titular|transf\s+mesmos?\s+titulares?/i;
+    // TRNTYPE que representam débito (saída de caixa)
+    const _TDEB=['DEBIT','CHECK','ATM','POS','PAYMENT','CASH','DIRECTDEBIT','REPEATPMT','FEE','SRVCHG'];
+    const _TCRED=['CREDIT','DEP','DIRECTDEP'];
     const campo=(bl,tag)=>{const m=bl.match(new RegExp('<'+tag+'>\\s*([^\\r\\n<]+)','i'));return m?m[1].trim():''};
     const parseBRL=s=>{const str=(s||'0').trim();return str.includes(',')?parseFloat(str.replace(/\./g,'').replace(',','.')):parseFloat(str)};
     for(const b of txBlocks){
@@ -2511,17 +2534,27 @@ function parseOFXItau(text, contas){
       const fitid=campo(bl,'FITID');
       const trntype=campo(bl,'TRNTYPE').toUpperCase();
       const dtRaw=campo(bl,'DTPOSTED').replace(/[^\d]/g,'').slice(0,8);
-      const valor=parseBRL(campo(bl,'TRNAMT'));
+      // Usa let para permitir correção de sinal via TRNTYPE
+      let valor=parseBRL(campo(bl,'TRNAMT'));
       const memo=campo(bl,'MEMO');
       const name=campo(bl,'NAME');
       if(!dtRaw||dtRaw.length<8||isNaN(valor)||valor===0) continue;
       const data=`${dtRaw.slice(0,4)}-${dtRaw.slice(4,6)}-${dtRaw.slice(6,8)}`;
       const desc=(memo||name||'').replace(/\s+/g,' ').trim();
-      if(_SALDO.test(desc)||_AUTO.test(desc)) continue;
+      // Linha informativa de saldo (não-monetária) — descarta
+      if(_SALDO.test(desc)) continue;
+      // Correção de sinal: se o banco enviou TRNAMT positivo para um débito (violação OFX),
+      // força negativo. Créditos com TRNAMT negativo (estornos) mantêm o sinal original.
+      if(_TDEB.includes(trntype)&&valor>0) valor=-valor;
       let tipo=valor>=0?'receita':'despesa';
       if(_REND.test(desc)||trntype==='INT'||trntype==='DIV') tipo='rendimento';
-      if(trntype==='XFER') tipo='transferencia';
-      txs.push({contaId:conta.id,fitid:fitid||null,data,desc,valor,tipo});
+      // Detecta transferências pelo TRNTYPE=XFER (padrão OFX) ou pela descrição.
+      if(trntype==='XFER'||_XFER_DESC.test(desc)) tipo='transferencia';
+      // Aplicações/resgates automáticos (CDB/LCI/LCA/aplic autom) e bloqueios PIX
+      // MOVIMENTAM o C/C de fato (o OFX é do C/C, não consolidado com a aplicação).
+      // Classifica como transferência interna para que o saldo reflita o extrato real.
+      if(_AUTO.test(desc)) tipo='transferencia';
+      txs.push({contaId:conta.id,fitid:fitid||null,data,desc,valor,tipo,_trntype:trntype});
     }
     return {ok:true,txs,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
   }catch(e){
@@ -2554,6 +2587,23 @@ async function processarItau(){
 
     addLog(`${file.name} — ${parsed.txs.length} transações encontradas (${parsed.conta})...`,'inf');
     if(parsed.matchType==='bank'||parsed.matchType==='branch') addLog(`  ⚠ Vinculado por fallback. ACCTID: ${parsed.acctid} — confirme no cadastro.`,'war');
+    // ── Log detalhado por tipo ──────────────────────────────────────────
+    {
+      const fmtBRL=(v)=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+      const rec=parsed.txs.filter(t=>t.tipo==='receita');
+      const desp=parsed.txs.filter(t=>t.tipo==='despesa');
+      const rend=parsed.txs.filter(t=>t.tipo==='rendimento');
+      const trf=parsed.txs.filter(t=>t.tipo==='transferencia');
+      const sumV=arr=>arr.reduce((a,t)=>a+t.valor,0);
+      addLog(`  ↳ Receitas: ${rec.length} (${fmtBRL(sumV(rec))}) | Despesas: ${desp.length} (${fmtBRL(sumV(desp))}) | Rendimentos: ${rend.length} (${fmtBRL(sumV(rend))}) | Transf.: ${trf.length}`,'inf');
+      const anomalos=parsed.txs.filter(t=>t.tipo==='despesa'&&t.valor>0);
+      if(anomalos.length) addLog(`  ⚠ ${anomalos.length} despesa(s) com valor POSITIVO — verifique TRNTYPE no OFX!`,'war');
+      const tdeb=['DEBIT','CHECK','ATM','POS','PAYMENT','CASH','DIRECTDEBIT','REPEATPMT','FEE','SRVCHG'];
+      const tcred=['CREDIT','DEP','DIRECTDEP'];
+      const tconhecidos=new Set([...tdeb,...tcred,'XFER','INT','DIV','OTHER','TRANSFER','']);
+      const tiposDesconhecidos=[...new Set(parsed.txs.map(t=>t._trntype).filter(v=>!tconhecidos.has(v)))];
+      if(tiposDesconhecidos.length) addLog(`  ⚠ TRNTYPE desconhecido(s): ${tiposDesconhecidos.join(', ')}  — pode indicar classificação errada`,'war');
+    }
 
     let rowsParaInserir;
     let removidas=0;
@@ -2789,20 +2839,27 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   });
 
   // Quando o Supabase renova o token em background (reload com sessão expirada),
-  // recarrega os dados para evitar dashboard vazio ou com valores errados
+  // recarrega só o essencial (contas/importações). Dashboard usa RPC então não
+  // precisa esperar todas as transações. _tx é recarregado em background.
   _SB.auth.onAuthStateChange(async (event)=>{
     if(event==='TOKEN_REFRESHED' && _currentUser){
-      await loadAllData();
+      await loadEssentialData();
       renderDash();
       renderSaldos();
       renderHist();
+      loadAllData().catch(e=>console.warn('[token-refresh] loadAllData bg:', e.message));
     }
   });
 
   const autenticado = await Auth.init();
   if(autenticado){
-    await loadAllData();
+    // Carga rápida: só contas + importações. Dashboard usa RPC, então
+    // não precisa esperar todas as transações pra exibir saldos corretos.
+    await loadEssentialData();
     initApp();
+    // Carga das transações em background — usada só pela aba Movimentações.
+    // Se demorar ou falhar, o dashboard segue funcionando.
+    loadAllData().catch(e=>console.warn('[boot] loadAllData em background falhou:', e.message));
   }
 });
 
