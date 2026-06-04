@@ -665,6 +665,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
     <button class="tab on" data-p="dashboard">Dashboard</button>
     <button class="tab" data-p="contas">Contas</button>
     <button class="tab" data-p="movimentacoes">Movimentações</button>
+    <button class="tab" data-p="tarifas">Tarifa Bancária</button>
     <button class="tab" data-p="saldos">Saldos Iniciais</button>
     <button class="tab" data-p="importar">Importar OFX</button>
     <button class="tab" data-p="usuarios" id="tabUsuarios" style="display:none">Usuários</button>
@@ -870,6 +871,87 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
       </table>
     </div>
     <div id="movPag" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:1rem;font-size:.75rem;color:var(--t2)"></div>
+  </section>
+
+  <!-- ══ TARIFA BANCÁRIA ══ -->
+  <section class="page" id="page-tarifas">
+    <div class="mov-filters">
+      <select class="fsel" id="tarEmp" style="min-width:150px"><option value="">Todas as empresas</option></select>
+      <select class="fsel" id="tarBanco" style="min-width:120px">
+        <option value="">Todos os bancos</option><option>Santander</option><option>Itaú</option>
+      </select>
+      <input type="date" id="tarDtIni" class="fsel" title="Data inicial"/>
+      <input type="date" id="tarDtFim" class="fsel" title="Data final"/>
+      <button class="bp" onclick="renderTarifas()" style="padding:5px 14px;font-size:.7rem">Filtrar</button>
+      <button class="bs" onclick="limparFiltroTarifas()" style="padding:5px 14px;font-size:.7rem">Limpar</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kgrid">
+      <div class="kcard ktotal">
+        <div class="klbl">Total de Tarifas Pagas</div>
+        <div class="kval" id="tarTotal">—</div>
+        <div class="ksub" id="tarTotalSub">no período filtrado</div>
+        <div class="kgl"></div>
+      </div>
+      <div class="kcard">
+        <div class="klbl">Quantidade de Tarifas</div>
+        <div class="kval" id="tarQtd">—</div>
+        <div class="kbadge br">cobranças</div>
+      </div>
+      <div class="kcard">
+        <div class="klbl">Tarifa Média</div>
+        <div class="kval" id="tarMedia">—</div>
+        <div class="kbadge bo">por cobrança</div>
+      </div>
+      <div class="kcard">
+        <div class="klbl">Empresa que mais paga</div>
+        <div class="kval" id="tarTopEmp" style="font-size:1.1rem">—</div>
+        <div class="ksub" id="tarTopEmpVal">—</div>
+      </div>
+    </div>
+
+    <!-- Evolução Mensal -->
+    <div class="shdr"><span class="stit">Evolução Mensal das Tarifas</span><span class="sln"></span></div>
+    <div class="kcard" style="margin-bottom:2.2rem;padding:1.4rem 1.6rem">
+      <div class="chart-wrap"><canvas id="chartTarMensal"></canvas></div>
+    </div>
+
+    <!-- Por Banco -->
+    <div class="shdr"><span class="stit">Tarifas por Banco</span><span class="sln"></span></div>
+    <div class="kcard" style="margin-bottom:2.2rem;padding:1.4rem 1.6rem;max-width:440px">
+      <div style="height:240px"><canvas id="chartTarBanco"></canvas></div>
+    </div>
+
+    <!-- Por Categoria -->
+    <div class="shdr"><span class="stit">Tarifas por Categoria</span><span class="sln"></span></div>
+    <div class="twrap" style="margin-bottom:2.2rem">
+      <table class="dtbl">
+        <colgroup><col style="width:50%"><col style="width:20%"><col style="width:30%"></colgroup>
+        <thead><tr><th>Categoria</th><th class="r">Qtd</th><th class="r">Total</th></tr></thead>
+        <tbody id="tarCatBody"><tr><td colspan="3" class="ecel">—</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- Por Empresa -->
+    <div class="shdr"><span class="stit">Tarifas por Empresa</span><span class="sln"></span></div>
+    <div class="twrap" style="margin-bottom:2.2rem">
+      <table class="dtbl">
+        <colgroup><col style="width:42%"><col style="width:18%"><col style="width:15%"><col style="width:25%"></colgroup>
+        <thead><tr><th>Empresa</th><th>Banco</th><th class="r">Qtd</th><th class="r">Total</th></tr></thead>
+        <tbody id="tarEmpBody"><tr><td colspan="4" class="ecel">—</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- Detalhe -->
+    <div class="shdr"><span class="stit">Detalhe das Tarifas</span><span class="sln"></span></div>
+    <div class="twrap">
+      <table class="dtbl">
+        <colgroup><col style="width:12%"><col style="width:26%"><col style="width:12%"><col style="width:34%"><col style="width:16%"></colgroup>
+        <thead><tr><th>Data</th><th>Empresa</th><th>Banco</th><th>Descrição</th><th class="r">Valor</th></tr></thead>
+        <tbody id="tarDetBody"><tr><td colspan="5" class="ecel">Nenhuma tarifa encontrada.</td></tr></tbody>
+      </table>
+    </div>
   </section>
 
   <!-- ══ SALDOS INICIAIS ══ -->
@@ -2181,6 +2263,167 @@ function renderMov(){
 }
 
 /* ═══════════════════════════════════════════════
+   TARIFA BANCÁRIA
+═══════════════════════════════════════════════ */
+// Detecta tarifas de serviço pela descrição (NÃO inclui impostos como IOF/IR).
+const _TARIFA=/\btar\b|tarifa|cesta|pacote|manuten[cç]|anuidade/i;
+// Classifica a tarifa em categorias para o resumo
+function categoriaTarifa(desc){
+  const d=(desc||'').toLowerCase();
+  if(/\bpix\b/.test(d))            return 'Tarifa PIX';
+  if(/\bted\b/.test(d))            return 'Tarifa TED';
+  if(/\bdoc\b/.test(d))            return 'Tarifa DOC';
+  if(/cesta|pacote/.test(d))       return 'Cesta / Pacote de serviços';
+  if(/manuten[cç]/.test(d))        return 'Manutenção de conta';
+  if(/anuidade/.test(d))           return 'Anuidade';
+  if(/boleto|cobran/.test(d))      return 'Tarifa de boleto';
+  if(/saque/.test(d))              return 'Tarifa de saque';
+  if(/extrato/.test(d))            return 'Tarifa de extrato';
+  return 'Outras tarifas';
+}
+let _chartTarMensal=null, _chartTarBanco=null;
+
+function limparFiltroTarifas(){
+  document.getElementById('tarEmp').value='';
+  document.getElementById('tarBanco').value='';
+  document.getElementById('tarDtIni').value='';
+  document.getElementById('tarDtFim').value='';
+  renderTarifas();
+}
+
+function renderTarifas(){
+  const contas=getContas();
+  const txs=getTx();
+
+  // Popula select de empresas (preserva seleção)
+  const empSel=document.getElementById('tarEmp');
+  const empVal=empSel.value;
+  const empresas=[...new Set(contas.filter(c=>c.ativo).map(c=>c.empresa).filter(Boolean))].sort();
+  empSel.innerHTML='<option value="">Todas as empresas</option>'+empresas.map(e=>`<option value="${e}"${e===empVal?' selected':''}>${e}</option>`).join('');
+
+  const fe=empSel.value;
+  const fb=document.getElementById('tarBanco').value;
+  const di=document.getElementById('tarDtIni').value;
+  const df=document.getElementById('tarDtFim').value;
+
+  // Filtra apenas tarifas de serviço
+  const tarifas=txs.filter(t=>{
+    if(!_TARIFA.test(t.desc||'')) return false;
+    const c=contas.find(x=>x.id===t.contaId); if(!c) return false;
+    if(fe&&c.empresa!==fe) return false;
+    if(fb&&c.banco!==fb) return false;
+    if(di&&t.data<di) return false;
+    if(df&&t.data>df) return false;
+    return true;
+  });
+
+  // Valor das tarifas é negativo (saída). totalPago = soma positiva (estornos reduzem).
+  const totalPago=tarifas.reduce((a,t)=>a+(-t.valor),0);
+  const qtd=tarifas.length;
+  const media=qtd?totalPago/qtd:0;
+
+  document.getElementById('tarTotal').textContent=cur(totalPago);
+  document.getElementById('tarQtd').textContent=qtd.toLocaleString('pt-BR');
+  document.getElementById('tarMedia').textContent=cur(media);
+
+  // Agrupa por empresa
+  const porEmp={};
+  tarifas.forEach(t=>{
+    const c=contas.find(x=>x.id===t.contaId)||{empresa:'—',banco:'—'};
+    if(!porEmp[c.empresa]) porEmp[c.empresa]={empresa:c.empresa,banco:c.banco,qtd:0,total:0};
+    porEmp[c.empresa].qtd++; porEmp[c.empresa].total+=(-t.valor);
+  });
+  const empArr=Object.values(porEmp).sort((a,b)=>b.total-a.total);
+  document.getElementById('tarTopEmp').textContent=empArr.length?empArr[0].empresa:'—';
+  document.getElementById('tarTopEmpVal').textContent=empArr.length?cur(empArr[0].total):'—';
+
+  const empBody=document.getElementById('tarEmpBody');
+  empBody.innerHTML=empArr.length?empArr.map(r=>`<tr>
+    <td title="${r.empresa}">${r.empresa}</td>
+    <td>${r.banco}</td>
+    <td class="r">${r.qtd}</td>
+    <td class="r neg">${cur(r.total)}</td>
+  </tr>`).join(''):`<tr><td colspan="4" class="ecel">Nenhuma tarifa encontrada.</td></tr>`;
+
+  // Agrupa por categoria
+  const porCat={};
+  tarifas.forEach(t=>{
+    const k=categoriaTarifa(t.desc);
+    if(!porCat[k]) porCat[k]={cat:k,qtd:0,total:0};
+    porCat[k].qtd++; porCat[k].total+=(-t.valor);
+  });
+  const catArr=Object.values(porCat).sort((a,b)=>b.total-a.total);
+  const catBody=document.getElementById('tarCatBody');
+  catBody.innerHTML=catArr.length?catArr.map(r=>`<tr>
+    <td>${r.cat}</td><td class="r">${r.qtd}</td><td class="r neg">${cur(r.total)}</td>
+  </tr>`).join(''):`<tr><td colspan="3" class="ecel">—</td></tr>`;
+
+  // Tabela detalhe (mais recentes primeiro)
+  const det=tarifas.slice().sort((a,b)=>b.data.localeCompare(a.data));
+  const detBody=document.getElementById('tarDetBody');
+  detBody.innerHTML=det.length?det.map(t=>{
+    const c=contas.find(x=>x.id===t.contaId)||{empresa:'—',banco:'—'};
+    return `<tr>
+      <td style="font-family:'DM Mono',monospace;font-size:.72rem">${t.data.split('-').reverse().join('/')}</td>
+      <td title="${c.empresa}">${c.empresa}</td>
+      <td>${c.banco}</td>
+      <td title="${(t.desc||'').replace(/"/g,'&quot;')}" style="overflow:hidden;text-overflow:ellipsis">${t.desc||'—'}</td>
+      <td class="r neg">${cur(t.valor)}</td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="5" class="ecel">Nenhuma tarifa encontrada.</td></tr>`;
+
+  // Gráfico: evolução mensal
+  const porMes={};
+  tarifas.forEach(t=>{
+    const m=(t.data||'').slice(0,7); if(m) porMes[m]=(porMes[m]||0)+(-t.valor);
+  });
+  const meses=Object.keys(porMes).sort();
+  const mesLabels=meses.map(m=>{const [y,mm]=m.split('-');return new Date(+y,+mm-1,1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});});
+  renderChartTarMensal(mesLabels,meses.map(m=>porMes[m]));
+
+  // Gráfico: por banco
+  const porBanco={};
+  tarifas.forEach(t=>{
+    const c=contas.find(x=>x.id===t.contaId)||{banco:'—'};
+    porBanco[c.banco]=(porBanco[c.banco]||0)+(-t.valor);
+  });
+  renderChartTarBanco(Object.keys(porBanco),Object.values(porBanco));
+}
+
+function renderChartTarMensal(labels,vals){
+  const el=document.getElementById('chartTarMensal'); if(!el) return;
+  const ctx=el.getContext('2d');
+  if(_chartTarMensal){_chartTarMensal.destroy();_chartTarMensal=null;}
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const tickColor=isDark?'rgba(255,255,255,.45)':'rgba(0,0,0,.5)';
+  const gridColor=isDark?'rgba(255,255,255,.06)':'rgba(0,0,0,.06)';
+  _chartTarMensal=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{label:'Tarifas pagas',data:vals,backgroundColor:'rgba(239,68,68,.6)',borderColor:'#EF4444',borderWidth:1,borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur(c.parsed.y)}}},
+      scales:{x:{ticks:{color:tickColor},grid:{display:false}},
+              y:{ticks:{color:tickColor,callback:v=>cur(v)},grid:{color:gridColor}}}}
+  });
+}
+
+function renderChartTarBanco(labels,vals){
+  const el=document.getElementById('chartTarBanco'); if(!el) return;
+  const ctx=el.getContext('2d');
+  if(_chartTarBanco){_chartTarBanco.destroy();_chartTarBanco=null;}
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const tickColor=isDark?'rgba(255,255,255,.7)':'rgba(0,0,0,.7)';
+  const cores=labels.map(l=>{const n=(l||'').toLowerCase();return n.includes('santander')?'#EC0000':n.includes('ita')?'#EC7000':'#8888aa';});
+  _chartTarBanco=new Chart(ctx,{
+    type:'doughnut',
+    data:{labels,datasets:[{data:vals,backgroundColor:cores,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{color:tickColor}},
+               tooltip:{callbacks:{label:c=>`${c.label}: ${cur(c.parsed)}`}}}}
+  });
+}
+
+/* ═══════════════════════════════════════════════
    SALDOS INICIAIS
 ═══════════════════════════════════════════════ */
 function renderSaldos(){
@@ -2728,6 +2971,7 @@ const pageRenders={
   dashboard:renderDash,
   contas:renderContas,
   movimentacoes:()=>{renderMov()},
+  tarifas:renderTarifas,
   saldos:renderSaldos,
   importar:renderHist,
   usuarios:renderUsuarios
