@@ -2332,6 +2332,8 @@ function parseOFXSantander(text, contas){
     // a regex inclui esses padrões também — sem isso, viram "despesa"/"receita" e
     // inflam as KPIs do dashboard (mesmo que o saldo total continue batendo).
     const _AUTO=/contamax|aplic[\s.]*autom|aplicacao\s+aut|aplic\s+automatica|resgate[\s.]*autom|resgate\s+automatico|resgate\s+prog|aplic[a-z]*\s+(?:cdb|rdb|lci|lca)|resgate\s+(?:cdb|rdb|lci|lca)|bloqueio\s+pix|desbloqueio\s+pix/i;
+    // fitids de CONTAMAX/aplicações-resgates descartados (não entram no saldo — ver loop)
+    const descartadas=[];
     const _SALDO=/saldo\s+anterior|saldo\s+do\s+dia|saldo\s+inicial|saldo\s+em\s+\d|saldo\s+devedor/i;
     // _XFER_DESC: Santander usa TRNTYPE=CREDIT para transferências internas, não XFER.
     // Detecta transferências pela descrição para classificar corretamente.
@@ -2363,13 +2365,20 @@ function parseOFXSantander(text, contas){
       // Santander usa TRNTYPE=CREDIT para transferências entre contas próprias.
       // Detecta também pelo TRNTYPE=XFER (padrão OFX).
       if(trntype==='XFER'||_XFER_DESC.test(desc)) tipo='transferencia';
-      // CONTAMAX, aplicações/resgates automáticos e bloqueios PIX MOVIMENTAM o C/C de fato
-      // (o OFX é do C/C, não consolidado com a aplicação). Classifica como transferência
-      // interna para que o saldo da conta reflita o extrato real do banco.
-      if(_AUTO.test(desc)) tipo='transferencia';
+      // CONTAMAX e aplicações/resgates automáticos (CDB/RDB/LCI/LCA): o banco "varre" o
+      // excedente do C/C para o investimento (zerando o C/C), mas o dinheiro continua sendo
+      // do cliente. Para o dashboard mostrar o saldo TOTAL (líquido + investido), NÃO contamos
+      // essas linhas no saldo: descartamos e guardamos o fitid para limpar importações antigas.
+      // Bloqueio/desbloqueio PIX (retenção, não investimento) e rendimentos reais são mantidos.
+      const ehPix=/bloqueio\s+pix|desbloqueio\s+pix/i.test(desc);
+      if(_AUTO.test(desc) && tipo!=='rendimento' && !ehPix){
+        if(fitid) descartadas.push(fitid);
+        continue;
+      }
+      if(_AUTO.test(desc)) tipo='transferencia'; // bloqueio/desbloqueio PIX
       txs.push({contaId:conta.id,fitid:fitid||null,data,desc,valor,tipo,_trntype:trntype});
     }
-    return {ok:true,txs,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
+    return {ok:true,txs,descartadas,contaId:conta.id,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
   }catch(e){
     return {ok:false,msg:'Santander — Erro ao ler OFX: '+e.message};
   }
@@ -2418,6 +2427,17 @@ async function processarSantander(){
       const tconhecidos=new Set([...tdeb,...tcred,'XFER','INT','DIV','OTHER','TRANSFER','']);
       const tiposDesconhecidos=[...new Set(parsed.txs.map(t=>t._trntype).filter(v=>!tconhecidos.has(v)))];
       if(tiposDesconhecidos.length) addLog(`  ⚠ TRNTYPE desconhecido(s): ${tiposDesconhecidos.join(', ')} — pode indicar classificação errada`,'war');
+    }
+
+    // Limpa do banco quaisquer CONTAMAX/aplicações-resgates importados antes (não entram no saldo)
+    if(parsed.descartadas?.length && parsed.contaId){
+      for(let i=0;i<parsed.descartadas.length;i+=LOTE){
+        await _SB.from('transacoes_santander').delete().eq('conta_id',parsed.contaId).in('fitid',parsed.descartadas.slice(i,i+LOTE));
+      }
+      const dsc=new Set(parsed.descartadas);
+      _tx=_tx.filter(t=>!(t.contaId===parsed.contaId&&dsc.has(t.fitid)));
+      parsed.descartadas.forEach(f=>fitidsExistentes.delete(`${parsed.contaId}|${f}`));
+      addLog(`  ${parsed.descartadas.length} lançamento(s) CONTAMAX/aplicação ignorado(s) (não entram no saldo).`,'inf');
     }
 
     let rowsParaInserir;
@@ -2521,6 +2541,8 @@ function parseOFXItau(text, contas){
     const _REND=/rend\s+pago\s+aplic\s+aut|rend\s+aplic|rendimento\s+aplic|juros\s+aplic|juros\s+cred|juros\s+sobre\s+cap|juros\s+credit/i;
     // _AUTO: aplicações/resgates automáticos que não impactam fluxo de caixa (Itaú: CDB, LCI, LCA, etc.)
     const _AUTO=/aplic[\s.]*autom|aplicacao\s+aut|aplic\s+automatica|resgate[\s.]*autom|resgate\s+automatico|resgate\s+prog|bloqueio\s+pix|desbloqueio\s+pix|aplic\s+cdb|resgate\s+cdb|aplic\s+lci|resgate\s+lci|aplic\s+lca|resgate\s+lca/i;
+    // fitids de aplicações/resgates descartados (não entram no saldo — ver loop)
+    const descartadas=[];
     const _SALDO=/saldo\s+anterior|saldo\s+do\s+dia|saldo\s+inicial|saldo\s+em\s+\d|saldo\s+devedor/i;
     // _XFER_DESC: detecta transferências internas pela descrição (bancos usam TRNTYPE=CREDIT/DEBIT para TEC)
     const _XFER_DESC=/transferencia\s+entre\s+contas|transf\s+valores?\s+p\/c\/c|transf\s+p\/c\/c\s|entre\s+contas\s+mesmo\s+titular|transf\s+mesmos?\s+titulares?/i;
@@ -2550,13 +2572,19 @@ function parseOFXItau(text, contas){
       if(_REND.test(desc)||trntype==='INT'||trntype==='DIV') tipo='rendimento';
       // Detecta transferências pelo TRNTYPE=XFER (padrão OFX) ou pela descrição.
       if(trntype==='XFER'||_XFER_DESC.test(desc)) tipo='transferencia';
-      // Aplicações/resgates automáticos (CDB/LCI/LCA/aplic autom) e bloqueios PIX
-      // MOVIMENTAM o C/C de fato (o OFX é do C/C, não consolidado com a aplicação).
-      // Classifica como transferência interna para que o saldo reflita o extrato real.
-      if(_AUTO.test(desc)) tipo='transferencia';
+      // Aplicações/resgates automáticos (CDB/LCI/LCA/aplic autom): dinheiro varrido do C/C
+      // para investimento, mas que continua sendo do cliente. Para o dashboard mostrar o saldo
+      // TOTAL (líquido + investido), NÃO contamos essas linhas no saldo: descartamos e guardamos
+      // o fitid para limpar importações antigas. Bloqueio PIX e rendimentos reais são mantidos.
+      const ehPix=/bloqueio\s+pix|desbloqueio\s+pix/i.test(desc);
+      if(_AUTO.test(desc) && tipo!=='rendimento' && !ehPix){
+        if(fitid) descartadas.push(fitid);
+        continue;
+      }
+      if(_AUTO.test(desc)) tipo='transferencia'; // bloqueio/desbloqueio PIX
       txs.push({contaId:conta.id,fitid:fitid||null,data,desc,valor,tipo,_trntype:trntype});
     }
-    return {ok:true,txs,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
+    return {ok:true,txs,descartadas,contaId:conta.id,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
   }catch(e){
     return {ok:false,msg:'Itaú — Erro ao ler OFX: '+e.message};
   }
@@ -2603,6 +2631,17 @@ async function processarItau(){
       const tconhecidos=new Set([...tdeb,...tcred,'XFER','INT','DIV','OTHER','TRANSFER','']);
       const tiposDesconhecidos=[...new Set(parsed.txs.map(t=>t._trntype).filter(v=>!tconhecidos.has(v)))];
       if(tiposDesconhecidos.length) addLog(`  ⚠ TRNTYPE desconhecido(s): ${tiposDesconhecidos.join(', ')}  — pode indicar classificação errada`,'war');
+    }
+
+    // Limpa do banco quaisquer aplicações/resgates importados antes (não entram no saldo)
+    if(parsed.descartadas?.length && parsed.contaId){
+      for(let i=0;i<parsed.descartadas.length;i+=LOTE){
+        await _SB.from('transacoes_itau').delete().eq('conta_id',parsed.contaId).in('fitid',parsed.descartadas.slice(i,i+LOTE));
+      }
+      const dsc=new Set(parsed.descartadas);
+      _tx=_tx.filter(t=>!(t.contaId===parsed.contaId&&dsc.has(t.fitid)));
+      parsed.descartadas.forEach(f=>fitidsExistentes.delete(`${parsed.contaId}|${f}`));
+      addLog(`  ${parsed.descartadas.length} aplicação/resgate ignorado(s) (não entram no saldo).`,'inf');
     }
 
     let rowsParaInserir;
