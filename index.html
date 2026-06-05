@@ -919,8 +919,8 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
 
     <!-- Por Banco -->
     <div class="shdr"><span class="stit">Tarifas por Banco</span><span class="sln"></span></div>
-    <div class="kcard" style="margin-bottom:2.2rem;padding:1.4rem 1.6rem;max-width:440px">
-      <div style="height:240px"><canvas id="chartTarBanco"></canvas></div>
+    <div class="kcard" style="margin-bottom:2.2rem;padding:1.4rem 1.6rem">
+      <div style="height:300px"><canvas id="chartTarBanco"></canvas></div>
     </div>
 
     <!-- Por Categoria -->
@@ -2142,6 +2142,7 @@ function renderContas(){
       <td class="r">${cur(c.saldoInicial||0)}</td>
       <td>
         <button onclick="editConta(${c.id})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:.8rem;padding:2px 6px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='var(--or1)'" onmouseout="this.style.color='var(--t3)'">✎</button>
+        <button onclick="apagarLancamentos(${c.id})" title="Apagar TODOS os lançamentos desta conta (definitivo)" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:.8rem;padding:2px 6px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#EF4444'" onmouseout="this.style.color='var(--t3)'">🗑️</button>
         <button onclick="delConta(${c.id})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:.8rem;padding:2px 6px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#EF4444'" onmouseout="this.style.color='var(--t3)'">✕</button>
       </td>
     </tr>`
@@ -2160,6 +2161,24 @@ function editConta(id){
   document.getElementById('fAg').value=c.agencia||'';
   document.getElementById('fCt').value=c.conta||'';
   document.getElementById('modConta').classList.add('op');
+}
+
+// Exclusão DEFINITIVA de todos os lançamentos de uma conta (apaga do Supabase).
+async function apagarLancamentos(id){
+  const c=getContas().find(x=>x.id===id);
+  if(!c){toast('Conta não encontrada.','er');return;}
+  const banco=(c.banco||'').toLowerCase();
+  const tabela=banco.includes('santander')?'transacoes_santander':(banco.includes('itaú')||banco.includes('itau'))?'transacoes_itau':null;
+  if(!tabela){toast('Banco da conta não identificado — não é possível apagar.','er');return;}
+  const qtd=getTx().filter(t=>t.contaId===id).length;
+  if(!confirm(`APAGAR DEFINITIVAMENTE todos os ${qtd} lançamento(s) da conta "${c.empresa}" (${c.banco})?\n\nIsso NÃO pode ser desfeito — só reimportando os OFX depois.`)) return;
+  if(!confirm(`Confirme novamente: apagar os ${qtd} lançamento(s) de "${c.empresa}"?`)) return;
+  const { error }=await _SB.from(tabela).delete().eq('conta_id',id);
+  if(error){toast('Erro ao apagar: '+error.message,'er');return;}
+  _tx=_tx.filter(t=>t.contaId!==id);
+  toast(`✓ ${qtd} lançamento(s) de "${c.empresa}" apagados.`,'ok');
+  renderContas();renderDash();renderMov();renderSaldos();
+  if(typeof renderTarifas==='function') renderTarifas();
 }
 
 async function delConta(id){
@@ -2372,14 +2391,20 @@ function renderTarifas(){
     </tr>`;
   }).join(''):`<tr><td colspan="5" class="ecel">Nenhuma tarifa encontrada.</td></tr>`;
 
-  // Gráfico: evolução mensal
-  const porMes={};
+  // Gráfico: evolução mensal por banco (barras empilhadas)
+  const corBanco=n=>{const x=(n||'').toLowerCase();return x.includes('santander')?'#EC0000':x.includes('ita')?'#EC7000':'#8888aa';};
+  const porMesBanco={}; const bancosSet=new Set();
   tarifas.forEach(t=>{
-    const m=(t.data||'').slice(0,7); if(m) porMes[m]=(porMes[m]||0)+(-t.valor);
+    const m=(t.data||'').slice(0,7); if(!m) return;
+    const c=contas.find(x=>x.id===t.contaId)||{banco:'—'};
+    bancosSet.add(c.banco);
+    (porMesBanco[m]=porMesBanco[m]||{})[c.banco]=(porMesBanco[m][c.banco]||0)+(-t.valor);
   });
-  const meses=Object.keys(porMes).sort();
+  const meses=Object.keys(porMesBanco).sort();
   const mesLabels=meses.map(m=>{const [y,mm]=m.split('-');return new Date(+y,+mm-1,1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});});
-  renderChartTarMensal(mesLabels,meses.map(m=>porMes[m]));
+  const bancos=[...bancosSet].sort((a,b)=>{const o=n=>(n||'').toLowerCase().includes('santander')?0:(n||'').toLowerCase().includes('ita')?1:2;return o(a)-o(b);});
+  const datasetsBanco=bancos.map(b=>({label:b,data:meses.map(m=>porMesBanco[m][b]||0),backgroundColor:corBanco(b),borderWidth:0,borderRadius:4,stack:'tar'}));
+  renderChartTarMensal(mesLabels,datasetsBanco);
 
   // Gráfico: por banco
   const porBanco={};
@@ -2390,7 +2415,7 @@ function renderTarifas(){
   renderChartTarBanco(Object.keys(porBanco),Object.values(porBanco));
 }
 
-function renderChartTarMensal(labels,vals){
+function renderChartTarMensal(labels,datasets){
   const el=document.getElementById('chartTarMensal'); if(!el) return;
   const ctx=el.getContext('2d');
   if(_chartTarMensal){_chartTarMensal.destroy();_chartTarMensal=null;}
@@ -2399,11 +2424,12 @@ function renderChartTarMensal(labels,vals){
   const gridColor=isDark?'rgba(255,255,255,.06)':'rgba(0,0,0,.06)';
   _chartTarMensal=new Chart(ctx,{
     type:'bar',
-    data:{labels,datasets:[{label:'Tarifas pagas',data:vals,backgroundColor:'rgba(239,68,68,.6)',borderColor:'#EF4444',borderWidth:1,borderRadius:5}]},
+    data:{labels,datasets},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur(c.parsed.y)}}},
-      scales:{x:{ticks:{color:tickColor},grid:{display:false}},
-              y:{ticks:{color:tickColor,callback:v=>cur(v)},grid:{color:gridColor}}}}
+      plugins:{legend:{display:true,position:'bottom',labels:{color:tickColor,boxWidth:12}},
+               tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${cur(c.parsed.y)}`}}},
+      scales:{x:{stacked:true,ticks:{color:tickColor},grid:{display:false}},
+              y:{stacked:true,ticks:{color:tickColor,callback:v=>cur(v)},grid:{color:gridColor}}}}
   });
 }
 
@@ -2614,11 +2640,20 @@ function parseOFXSantander(text, contas){
       // essas linhas no saldo: descartamos e guardamos o fitid para limpar importações antigas.
       // Bloqueio/desbloqueio PIX (retenção, não investimento) e rendimentos reais são mantidos.
       const ehPix=/bloqueio\s+pix|desbloqueio\s+pix/i.test(desc);
-      if(_AUTO.test(desc) && tipo!=='rendimento' && !ehPix){
+      // "RENDIMENTO LIQUIDO DE CONTAMAX" (juros do CONTAMAX creditados): NÃO descarta e NÃO vira
+      // transferência — é lido como RECEITA (entra no saldo e na KPI de receitas).
+      const ehRendContamax=/rendimento\s+l[ií]quido|rend\.?\s+l[ií]quido|rendimento\s+(?:de\s+)?contamax/i.test(desc);
+      if(ehRendContamax) tipo='receita';
+      // Exceção CPD: nessa conta o CDB sai/entra de fato da conta principal, então NÃO é
+      // descartado — entra no saldo (aplicação = despesa pelo sinal, resgate = receita).
+      const ehCPD=/cpd/i.test(conta.empresa||'')||/cpd/i.test(conta.marca||'');
+      const ehCDB=/\bcdb\b|\brdb\b/i.test(desc);
+      if(_AUTO.test(desc) && tipo!=='rendimento' && !ehPix && !ehRendContamax && !(ehCPD&&ehCDB)){
         if(fitid) descartadas.push(fitid);
         continue;
       }
-      if(_AUTO.test(desc)) tipo='transferencia'; // bloqueio/desbloqueio PIX
+      // bloqueio/desbloqueio PIX vira transferência; CPD+CDB mantém despesa/receita pelo sinal
+      if(_AUTO.test(desc) && tipo!=='rendimento' && !ehRendContamax && !(ehCPD&&ehCDB)) tipo='transferencia';
       txs.push({contaId:conta.id,fitid:fitid||null,data,desc,valor,tipo,_trntype:trntype});
     }
     return {ok:true,txs,descartadas,contaId:conta.id,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
@@ -2820,11 +2855,20 @@ function parseOFXItau(text, contas){
       // TOTAL (líquido + investido), NÃO contamos essas linhas no saldo: descartamos e guardamos
       // o fitid para limpar importações antigas. Bloqueio PIX e rendimentos reais são mantidos.
       const ehPix=/bloqueio\s+pix|desbloqueio\s+pix/i.test(desc);
-      if(_AUTO.test(desc) && tipo!=='rendimento' && !ehPix){
+      // "RENDIMENTO LIQUIDO DE CONTAMAX" (juros do CONTAMAX creditados): NÃO descarta e NÃO vira
+      // transferência — é lido como RECEITA (entra no saldo e na KPI de receitas).
+      const ehRendContamax=/rendimento\s+l[ií]quido|rend\.?\s+l[ií]quido|rendimento\s+(?:de\s+)?contamax/i.test(desc);
+      if(ehRendContamax) tipo='receita';
+      // Exceção CPD: nessa conta o CDB sai/entra de fato da conta principal, então NÃO é
+      // descartado — entra no saldo (aplicação = despesa pelo sinal, resgate = receita).
+      const ehCPD=/cpd/i.test(conta.empresa||'')||/cpd/i.test(conta.marca||'');
+      const ehCDB=/\bcdb\b|\brdb\b/i.test(desc);
+      if(_AUTO.test(desc) && tipo!=='rendimento' && !ehPix && !ehRendContamax && !(ehCPD&&ehCDB)){
         if(fitid) descartadas.push(fitid);
         continue;
       }
-      if(_AUTO.test(desc)) tipo='transferencia'; // bloqueio/desbloqueio PIX
+      // bloqueio/desbloqueio PIX vira transferência; CPD+CDB mantém despesa/receita pelo sinal
+      if(_AUTO.test(desc) && tipo!=='rendimento' && !ehRendContamax && !(ehCPD&&ehCDB)) tipo='transferencia';
       txs.push({contaId:conta.id,fitid:fitid||null,data,desc,valor,tipo,_trntype:trntype});
     }
     return {ok:true,txs,descartadas,contaId:conta.id,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
