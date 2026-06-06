@@ -2594,6 +2594,11 @@ function parseOFXSantander(text, contas){
     // Parse das transações
     const txBlocks=[...text.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi)];
     const txs=[];
+    // Período do extrato — usado na reimportação forçada para apagar o intervalo todo
+    // (o FITID do Santander muda a cada download, então apagar por FITID não funciona).
+    const _dtS=text.match(/<DTSTART>\s*([0-9]{8})/i), _dtE=text.match(/<DTEND>\s*([0-9]{8})/i);
+    const _iso=s=>s?`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`:null;
+    const periodoIni=_iso(_dtS&&_dtS[1]), periodoFim=_iso(_dtE&&_dtE[1]);
     // _REND: rendimentos reais (juros/rendimento creditados por aplicações)
     const _REND=/rend\s+pago\s+aplic\s+aut|rend\s+aplic|rendimento\s+aplic|juros\s+aplic|juros\s+cred|juros\s+sobre\s+cap|juros\s+credit/i;
     // _AUTO: aplicações/resgates (CONTAMAX, CDB/RDB, LCI, LCA) e bloqueios PIX.
@@ -2656,7 +2661,7 @@ function parseOFXSantander(text, contas){
       if(_AUTO.test(desc) && tipo!=='rendimento' && !ehRendContamax && !(ehCPD&&ehCDB)) tipo='transferencia';
       txs.push({contaId:conta.id,fitid:fitid||null,data,desc,valor,tipo,_trntype:trntype});
     }
-    return {ok:true,txs,descartadas,contaId:conta.id,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
+    return {ok:true,txs,descartadas,periodoIni,periodoFim,contaId:conta.id,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
   }catch(e){
     return {ok:false,msg:'Santander — Erro ao ler OFX: '+e.message};
   }
@@ -2723,15 +2728,13 @@ async function processarSantander(){
     let erroFatal=null;
 
     if(forcar){
-      const fitids=parsed.txs.map(t=>t.fitid).filter(Boolean);
-      if(fitids.length&&parsed.txs[0]?.contaId){
-        for(let i=0;i<fitids.length;i+=LOTE){
-          const {count}=await _SB.from('transacoes_santander').delete().eq('conta_id',parsed.txs[0].contaId).in('fitid',fitids.slice(i,i+LOTE));
-          removidas+=(count||0);
-        }
-        const fs=new Set(fitids);
-        _tx=_tx.filter(t=>!(t.contaId===parsed.txs[0].contaId&&fs.has(t.fitid)));
-        fitids.forEach(f=>fitidsExistentes.delete(`${parsed.txs[0].contaId}|${f}`));
+      // Apaga TUDO da conta no período do extrato e regrava (não depende do FITID,
+      // que o Santander muda a cada download). Limpa o intervalo DTSTART–DTEND do OFX.
+      if(parsed.contaId&&parsed.periodoIni&&parsed.periodoFim){
+        const {count}=await _SB.from('transacoes_santander').delete()
+          .eq('conta_id',parsed.contaId).gte('data',parsed.periodoIni).lte('data',parsed.periodoFim);
+        removidas=(count||0);
+        _tx=_tx.filter(t=>!(t.contaId===parsed.contaId&&t.data>=parsed.periodoIni&&t.data<=parsed.periodoFim));
       }
       rowsParaInserir=parsed.txs;
     } else {
@@ -2815,6 +2818,11 @@ function parseOFXItau(text, contas){
     // Parse das transações
     const txBlocks=[...text.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi)];
     const txs=[];
+    // Período do extrato — usado na reimportação forçada para apagar o intervalo todo
+    // (o FITID do Santander muda a cada download, então apagar por FITID não funciona).
+    const _dtS=text.match(/<DTSTART>\s*([0-9]{8})/i), _dtE=text.match(/<DTEND>\s*([0-9]{8})/i);
+    const _iso=s=>s?`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`:null;
+    const periodoIni=_iso(_dtS&&_dtS[1]), periodoFim=_iso(_dtE&&_dtE[1]);
     // _REND: rendimentos reais (juros/rendimento creditados por aplicações)
     const _REND=/rend\s+pago\s+aplic\s+aut|rend\s+aplic|rendimento\s+aplic|juros\s+aplic|juros\s+cred|juros\s+sobre\s+cap|juros\s+credit/i;
     // _AUTO: aplicações/resgates automáticos que não impactam fluxo de caixa (Itaú: CDB, LCI, LCA, etc.)
@@ -2871,7 +2879,7 @@ function parseOFXItau(text, contas){
       if(_AUTO.test(desc) && tipo!=='rendimento' && !ehRendContamax && !(ehCPD&&ehCDB)) tipo='transferencia';
       txs.push({contaId:conta.id,fitid:fitid||null,data,desc,valor,tipo,_trntype:trntype});
     }
-    return {ok:true,txs,descartadas,contaId:conta.id,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
+    return {ok:true,txs,descartadas,periodoIni,periodoFim,contaId:conta.id,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
   }catch(e){
     return {ok:false,msg:'Itaú — Erro ao ler OFX: '+e.message};
   }
@@ -2936,15 +2944,13 @@ async function processarItau(){
     let erroFatal=null;
 
     if(forcar){
-      const fitids=parsed.txs.map(t=>t.fitid).filter(Boolean);
-      if(fitids.length&&parsed.txs[0]?.contaId){
-        for(let i=0;i<fitids.length;i+=LOTE){
-          const {count}=await _SB.from('transacoes_itau').delete().eq('conta_id',parsed.txs[0].contaId).in('fitid',fitids.slice(i,i+LOTE));
-          removidas+=(count||0);
-        }
-        const fs=new Set(fitids);
-        _tx=_tx.filter(t=>!(t.contaId===parsed.txs[0].contaId&&fs.has(t.fitid)));
-        fitids.forEach(f=>fitidsExistentes.delete(`${parsed.txs[0].contaId}|${f}`));
+      // Apaga TUDO da conta no período do extrato e regrava (não depende do FITID,
+      // que o banco pode mudar a cada download). Limpa o intervalo DTSTART–DTEND do OFX.
+      if(parsed.contaId&&parsed.periodoIni&&parsed.periodoFim){
+        const {count}=await _SB.from('transacoes_itau').delete()
+          .eq('conta_id',parsed.contaId).gte('data',parsed.periodoIni).lte('data',parsed.periodoFim);
+        removidas=(count||0);
+        _tx=_tx.filter(t=>!(t.contaId===parsed.contaId&&t.data>=parsed.periodoIni&&t.data<=parsed.periodoFim));
       }
       rowsParaInserir=parsed.txs;
     } else {
