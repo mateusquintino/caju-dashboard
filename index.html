@@ -2639,26 +2639,24 @@ function parseOFXSantander(text, contas){
       // Santander usa TRNTYPE=CREDIT para transferências entre contas próprias.
       // Detecta também pelo TRNTYPE=XFER (padrão OFX).
       if(trntype==='XFER'||_XFER_DESC.test(desc)) tipo='transferencia';
-      // CONTAMAX e aplicações/resgates automáticos (CDB/RDB/LCI/LCA): o banco "varre" o
-      // excedente do C/C para o investimento (zerando o C/C), mas o dinheiro continua sendo
-      // do cliente. Para o dashboard mostrar o saldo TOTAL (líquido + investido), NÃO contamos
-      // essas linhas no saldo: descartamos e guardamos o fitid para limpar importações antigas.
-      // Bloqueio/desbloqueio PIX (retenção, não investimento) e rendimentos reais são mantidos.
+      // CONTAMAX, LCI e LCA: o banco "varre" o excedente do C/C para o investimento (zerando o
+      // C/C), mas o dinheiro continua sendo do cliente. Para o dashboard mostrar o saldo TOTAL,
+      // NÃO contamos essas linhas (descartamos e guardamos o fitid p/ limpar importações antigas).
+      // EXCEÇÃO: CDB/RDB (aplicação e resgate) são lidos como despesa/receita em TODAS as contas
+      // Santander — entram no saldo (aplicação = despesa pelo sinal, resgate = receita).
+      // Bloqueio/desbloqueio PIX e rendimentos reais também são mantidos.
       const ehPix=/bloqueio\s+pix|desbloqueio\s+pix/i.test(desc);
-      // "RENDIMENTO LIQUIDO DE CONTAMAX" (juros do CONTAMAX creditados): NÃO descarta e NÃO vira
-      // transferência — é lido como RECEITA (entra no saldo e na KPI de receitas).
+      // "RENDIMENTO LIQUIDO DE CONTAMAX" (juros creditados): lido como RECEITA, não descartado.
       const ehRendContamax=/rendimento\s+l[ií]quido|rend\.?\s+l[ií]quido|rendimento\s+(?:de\s+)?contamax/i.test(desc);
       if(ehRendContamax) tipo='receita';
-      // Exceção CPD: nessa conta o CDB sai/entra de fato da conta principal, então NÃO é
-      // descartado — entra no saldo (aplicação = despesa pelo sinal, resgate = receita).
-      const ehCPD=/cpd/i.test(conta.empresa||'')||/cpd/i.test(conta.marca||'');
+      // CDB/RDB: aplicação=despesa, resgate=receita (todas as contas Santander) — não descarta.
       const ehCDB=/\bcdb\b|\brdb\b/i.test(desc);
-      if(_AUTO.test(desc) && tipo!=='rendimento' && !ehPix && !ehRendContamax && !(ehCPD&&ehCDB)){
+      if(_AUTO.test(desc) && tipo!=='rendimento' && !ehPix && !ehRendContamax && !ehCDB){
         if(fitid) descartadas.push(fitid);
         continue;
       }
-      // bloqueio/desbloqueio PIX vira transferência; CPD+CDB mantém despesa/receita pelo sinal
-      if(_AUTO.test(desc) && tipo!=='rendimento' && !ehRendContamax && !(ehCPD&&ehCDB)) tipo='transferencia';
+      // bloqueio/desbloqueio PIX vira transferência; CDB/RDB mantém despesa/receita pelo sinal
+      if(_AUTO.test(desc) && tipo!=='rendimento' && !ehRendContamax && !ehCDB) tipo='transferencia';
       txs.push({contaId:conta.id,fitid:fitid||null,data,desc,valor,tipo,_trntype:trntype});
     }
     return {ok:true,txs,descartadas,periodoIni,periodoFim,contaId:conta.id,conta:conta.empresa,acctid:acctNum,matchType,msg:''};
