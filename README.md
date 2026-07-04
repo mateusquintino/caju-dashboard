@@ -13,11 +13,13 @@ O projeto tem duas partes:
 
 ```
 Fluxo de caixa/
+├── index.html                    ← entrada do site: redireciona p/ dashboard/ (GitHub Pages)
 ├── README.md                     ← este arquivo
 ├── .gitignore
 │
 ├── dashboard/                    ← aplicação web (frontend)
 │   ├── index.html                ← dashboard principal
+│   ├── favicon.svg
 │   └── assets/                   ← logos e imagens
 │
 ├── banco_de_dados/               ← scripts SQL do Supabase
