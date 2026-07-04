@@ -7,13 +7,6 @@
 
 
 # ── CREDENCIAIS E SEGREDOS (NUNCA COMITAR) ───────────────────────
-# config.json da automação contém usuário/senha de internet banking.
-# Versionar apenas um config.example.json com "PREENCHA" nos campos.
-automacao/config.json
-automacao/ultimo_download.json
-automacao/chrome_profile_santander/
-automacao/logs/
-
 # .env e variantes — convenção universal para segredos
 .env
 .env.*
@@ -39,7 +32,6 @@ backup*.sql
 # OFX contém transações de conta corrente — sensível.
 *.ofx
 *.OFX
-automacao/ofx/
 
 # Planilhas / exports financeiros locais
 *.xlsx~
