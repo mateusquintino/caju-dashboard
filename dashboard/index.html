@@ -52,6 +52,15 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
   transition:width .22s cubic-bezier(.4,0,.2,1);
 }
 .hdr:hover{width:240px;box-shadow:var(--sh2)}
+/* Botão de menu (hambúrguer) e fundo do drawer — só aparecem no mobile */
+.menu-btn{display:none;position:fixed;top:12px;left:12px;z-index:900;width:42px;height:42px;
+  border-radius:12px;border:1px solid var(--bd);background:var(--bg2);color:var(--t1);
+  align-items:center;justify-content:center;box-shadow:var(--sh);cursor:pointer}
+.menu-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;
+  opacity:0;transition:opacity .28s ease}
+.menu-backdrop.on{opacity:1}
+/* Esconde o hambúrguer nas telas de login/cadastro */
+.auth-screen.on ~ .menu-btn{display:none!important}
 .hdr::-webkit-scrollbar{width:0}
 
 .logo{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;flex-shrink:0;height:42px}
@@ -192,7 +201,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
   background:var(--or1);color:#fff;border-radius:8px;font-family:'DM Mono',monospace;font-size:.56rem;
   font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 0 0 2px var(--bg2)}
 .hdr:hover .notif-badge{left:auto;right:12px;top:50%;transform:translateY(-50%)}
-.notif-panel{position:fixed;z-index:600;width:300px;max-height:72vh;overflow:visible;
+.notif-panel{position:fixed;z-index:1100;width:300px;max-height:72vh;overflow:visible;
   background:var(--bg2);border:1px solid var(--bd);border-radius:12px;box-shadow:var(--sh2);
   padding:8px;display:none;transform-origin:left center;animation:notifIn .16s cubic-bezier(.4,0,.2,1)}
 .notif-panel.on{display:block}
@@ -502,32 +511,11 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
 
   html{font-size:13px}
 
-  /* ── HEADER (volta ao topo no mobile, sem recolher) ── */
-  .hdr{position:static;width:auto;flex-direction:row;align-items:center;padding:.5rem .85rem;height:auto;flex-wrap:wrap;gap:.4rem;border-right:none;border-bottom:1px solid var(--bd);overflow:visible}
-  .hdr:hover{width:auto;box-shadow:none}
-  .logo{gap:6px}
-  .logo .logo-mini{display:block;height:26px}
-  .logo .logo-word{display:block;height:14px}
-  .tlbl{display:block}
-  .hdr-r{opacity:1;pointer-events:auto}
-  .tico svg{width:16px;height:16px}
-  .hdr-r{flex-direction:row;align-items:center;gap:5px;order:3;margin-left:auto;margin-top:0}
-  /* Badge do usuário no mobile: à direita, com caixa */
-  .user-badge{order:2;margin-left:auto;justify-content:flex-start;gap:5px;
-    background:var(--bg3);border:1px solid var(--bd);padding:3px 8px}
-  .user-badge .user-meta,.user-badge .tgl,.user-badge .btn-logout{display:flex}
-  .user-nome{display:none}
-  .user-avatar{width:26px;height:26px;font-size:.7rem}
-  /* Abas — linha separada com scroll horizontal */
-  .tabs{flex-direction:row;order:3;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;
-    scrollbar-width:none;border-top:1px solid var(--bd);padding:.35rem 0 .2rem;gap:2px}
-  .tab{width:auto;text-align:center}
-  .tabs::-webkit-scrollbar{display:none}
-  .tab{padding:5px 10px;font-size:.67rem;white-space:nowrap}
-  .auto-badge,.upd{display:none}
+  /* ── MENU LATERAL igual ao desktop (barra fixa, sem hambúrguer) ── */
+  .menu-btn,.menu-backdrop{display:none!important}
 
   /* ── MAIN ── */
-  .main{margin-left:0;padding:.85rem}
+  .main{margin-left:64px;padding:.85rem}
 
   /* ── PERIOD BAR ── */
   .pbar{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:1.1rem}
@@ -623,9 +611,7 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
 ═══════════════════════════════════════════════ */
 @media(max-width:420px){
   html{font-size:12px}
-  .hdr{padding:.45rem .7rem}
-  .logo svg{height:27px}
-  .main{padding:.75rem .7rem}
+  .main{margin-left:64px;padding:.75rem .7rem}
 
   /* KPIs em coluna única */
   .kgrid{grid-template-columns:1fr;gap:.55rem}
@@ -636,8 +622,6 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
   /* Marcas 2 colunas */
   .mgrid{grid-template-columns:1fr 1fr}
 
-  /* Tabs menores */
-  .tab{font-size:.64rem;padding:4px 8px}
 
   /* Period bar coluna única */
   .pbar{grid-template-columns:1fr}
@@ -818,6 +802,12 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
     <div id="regOk" class="auth-ok" style="display:none">✓ Solicitação enviada! Aguarde aprovação do administrador.</div>
   </div>
 </div>
+
+<!-- Botão de menu (mobile) + fundo escurecido do drawer -->
+<button class="menu-btn" id="menuBtn" onclick="toggleMenu()" aria-label="Abrir menu">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<div class="menu-backdrop" id="menuBackdrop" onclick="toggleMenu(false)"></div>
 
 <!-- HEADER -->
 <header class="hdr">
@@ -3788,8 +3778,17 @@ document.querySelectorAll('.tab').forEach(btn=>{
     const p=btn.dataset.p;
     document.getElementById('page-'+p).classList.add('on');
     if(pageRenders[p])pageRenders[p]();
+    if(window.innerWidth<=768) toggleMenu(false);   // fecha o drawer ao escolher uma aba
   });
 });
+
+// Menu lateral (drawer) no mobile
+function toggleMenu(open){
+  const hdr=document.querySelector('.hdr'), bd=document.getElementById('menuBackdrop');
+  const show = open!==undefined ? open : !hdr.classList.contains('open');
+  hdr.classList.toggle('open', show);
+  if(bd) bd.classList.toggle('on', show);
+}
 
 /* ═══════════════════════════════════════════════
    TEMA
