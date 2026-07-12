@@ -39,7 +39,10 @@
   --cal-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235A5855' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E")
 }
 html{font-size:14px}
-body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;transition:background var(--t),color var(--t);overflow-x:hidden}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;transition:background var(--t),color var(--t);overflow-x:hidden;
+  background-size:cover;background-position:center top;background-attachment:fixed;background-repeat:no-repeat}
+[data-theme="dark"] body:has(#page-home.on){background-image:url("assets/fundo-reuniao-preto.png")}
+[data-theme="light"] body:has(#page-home.on){background-image:url("assets/fundo-reuniao-branco.png")}
 
 /* ── SIDEBAR (menu lateral recolhível) ── */
 .hdr{
@@ -95,6 +98,26 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
 .tlbl{display:none}
 .hdr:hover .tlbl{display:block}
 
+/* ── TÓPICOS / GRUPOS DE MENU ── */
+.tab-grp{display:flex;flex-direction:column;gap:3px}
+.tab-hd{background:none;border:none;cursor:pointer;font-family:'Syne',sans-serif;
+  font-size:.8rem;font-weight:600;letter-spacing:.02em;color:var(--t3);
+  padding:10px;border-radius:8px;transition:background var(--t),color var(--t),padding var(--t);
+  display:flex;align-items:center;gap:13px;justify-content:center;
+  width:100%;white-space:nowrap;overflow:hidden}
+.hdr:hover .tab-hd{justify-content:flex-start;padding:10px 12px}
+.tab-hd:hover{color:var(--t1);background:var(--bg3)}
+.tchev{margin-left:auto;display:none;transition:transform .22s ease;flex-shrink:0;color:var(--t3)}
+.tchev svg{width:14px;height:14px;display:block;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.hdr:hover .tchev{display:flex}
+.tab-grp:not(.closed) .tchev{transform:rotate(90deg)}
+.tab-sub{display:none;flex-direction:column;gap:3px}   /* oculto quando menu recolhido */
+.hdr:hover .tab-sub{display:flex;margin-left:19px;padding-left:8px;border-left:1px solid var(--bd)}
+.hdr:hover .tab-grp.closed .tab-sub{display:none}
+.hdr:hover .tab-grp.closed:hover .tab-sub{display:flex}   /* abre ao passar o mouse */
+.tab-grp.closed:hover .tchev{transform:rotate(90deg)}
+.tab-topic{margin-top:2px}
+
 .hdr-r{display:flex;flex-direction:column;align-items:stretch;gap:9px;flex-shrink:0;margin-top:auto;
   opacity:0;pointer-events:none;transition:opacity .16s ease}
 .hdr:hover .hdr-r{opacity:1;pointer-events:auto}
@@ -121,6 +144,22 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
 .main{margin-left:64px;padding:1.75rem;transition:margin-left .22s cubic-bezier(.4,0,.2,1)}
 .page{display:none}.page.on{display:block;animation:fu .25s ease}
 @keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── PÁGINA INICIAL (HUB) ── */
+.home-hero{margin-bottom:2rem;display:flex;align-items:center;gap:1rem}
+.home-hero-logo{height:56px;width:auto;flex-shrink:0}
+.home-hero h1{font-family:'Syne',sans-serif;font-size:1.7rem;font-weight:800;color:var(--t1);margin:0 0 .35rem;letter-spacing:-.01em}
+.home-hero p{font-size:.9rem;color:var(--t3);margin:0}
+.home-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1rem}
+.hcard{display:flex;flex-direction:column;align-items:flex-start;gap:.75rem;text-align:left;
+  background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:1.25rem;cursor:pointer;
+  font-family:'Syne',sans-serif;transition:transform .18s ease,border-color var(--t),background var(--t),box-shadow var(--t)}
+.hcard:hover{transform:translateY(-3px);border-color:var(--or1);box-shadow:var(--sh2)}
+.hcard-ico{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+  background:var(--glow2);color:var(--or1);flex-shrink:0}
+.hcard-ico svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.hcard-tit{font-size:1rem;font-weight:700;color:var(--t1)}
+.hcard-desc{font-size:.76rem;font-weight:500;color:var(--t3);line-height:1.4}
 
 /* ── PERIOD BAR ── */
 .pbar{display:flex;align-items:center;gap:10px;margin-bottom:1.6rem;flex-wrap:wrap}
@@ -340,6 +379,40 @@ input.fsel[type="date"]{background-image:var(--cal-icon);background-repeat:no-re
   background:rgba(16,185,129,.1);color:#10B981;padding:2px 7px;border-radius:4px}
 .bneg{background:rgba(239,68,68,.1);color:#EF4444}
 .ecel{text-align:center;color:var(--t3);font-size:.78rem;padding:2rem !important}
+
+/* ── COMPROVANTES (submódulo nativo) ── */
+#page-comprovantes .cmp-hint{font-size:.66rem;color:var(--t3);margin-bottom:1.3rem;font-family:'DM Mono',monospace;line-height:1.5}
+#page-comprovantes .cmp-sub{display:block;font-family:'DM Mono',monospace;font-size:.62rem;color:var(--t3)}
+#page-comprovantes .cmp-cat{display:inline-flex;align-items:center;gap:4px;font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+#page-comprovantes .cmp-bank{display:inline-flex;font-size:.58rem;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:4px}
+#page-comprovantes .cmp-brand{font-size:.7rem;font-weight:700}
+#page-comprovantes .cmp-dl{display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--bd);color:var(--t2);padding:4px 10px;border-radius:6px;cursor:pointer;font-family:'Syne',sans-serif;font-size:.66rem;font-weight:700;transition:all var(--t)}
+#page-comprovantes .cmp-dl:hover:not(:disabled){border-color:var(--or1);color:var(--or1)}
+#page-comprovantes .cmp-dl:disabled{opacity:.5;cursor:wait}
+#page-comprovantes .cmp-search{display:flex;align-items:center;gap:9px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:9px 13px;margin-bottom:1rem;transition:border-color var(--t)}
+#page-comprovantes .cmp-search:focus-within{border-color:var(--or1)}
+#page-comprovantes .cmp-search svg{color:var(--t3);flex-shrink:0}
+#page-comprovantes .cmp-search input{flex:1;background:none;border:none;outline:none;color:var(--t1);font-family:'Syne',sans-serif;font-size:.84rem}
+#page-comprovantes .cmp-search input::placeholder{color:var(--t3)}
+#page-comprovantes .cmp-subnav{display:flex;gap:4px}
+#page-comprovantes .cmp-tab{background:none;border:1px solid var(--bd);cursor:pointer;font-family:'Syne',sans-serif;font-size:.74rem;font-weight:700;letter-spacing:.03em;color:var(--t3);padding:6px 15px;border-radius:8px;transition:all var(--t)}
+#page-comprovantes .cmp-tab:hover{color:var(--t1);border-color:var(--bdh)}
+#page-comprovantes .cmp-tab.on{color:var(--or1);border-color:var(--or1);background:rgba(232,67,10,.08)}
+#page-comprovantes .cmp-badge{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:.68rem;color:var(--t3);background:var(--bg3);border:1px solid var(--bd);border-radius:7px;padding:5px 11px}
+#page-comprovantes .cmp-badge.on{color:#10B981;border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.06)}
+#page-comprovantes .cmp-badge.off{color:#EF4444;border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.06)}
+#page-comprovantes .cmp-dot{width:7px;height:7px;border-radius:50%;background:var(--t3)}
+#page-comprovantes .cmp-badge.on .cmp-dot{background:#10B981}
+#page-comprovantes .cmp-badge.off .cmp-dot{background:#EF4444}
+#page-comprovantes .cmp-st{display:inline-flex;font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+/* modais do módulo (ficam fora de #page-comprovantes) */
+.cmp-mcsec{font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--or1);margin:.6rem 0 .1rem;border-top:1px solid var(--bd);padding-top:.6rem}
+.cmp-note{background:var(--bg3);border:1px solid var(--bd);border-radius:9px;padding:.7rem .9rem;font-size:.72rem;color:var(--t2);line-height:1.5;margin-bottom:.5rem}
+.cmp-note code{font-family:'DM Mono',monospace;background:var(--bg);padding:1px 5px;border-radius:4px;color:var(--t1)}
+#cmpModConta .cmp-only-itau,#cmpModConta .cmp-only-santander{display:none}
+#cmpModConta[data-bank="itau"] .cmp-only-itau{display:block}
+#cmpModConta[data-bank="santander"] .cmp-only-santander{display:block}
+#cmpModConta[data-bank="itau"] .cmp-mcsec{color:#EC7000;border-top-color:rgba(236,112,0,.3)}
 
 /* ── CONTAS PAGE ── */
 .cpage-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
@@ -725,6 +798,82 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
   letter-spacing:.06em;padding:2px 8px;border-radius:4px}
 .tab-pending-dot{background:#EF4444;color:#fff;border-radius:9px;
   padding:1px 5px;font-size:.58rem;font-weight:700;margin-left:4px;vertical-align:middle}
+
+/* ── Gestão de Usuários: novo layout (cards) ── */
+.uz-tbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:1rem}
+.uz-search{flex:1;min-width:220px;position:relative}
+.uz-search input{width:100%;height:42px;padding:0 14px 0 40px;border-radius:11px;border:1px solid var(--bd);
+  background:var(--bg2);color:var(--t1);font-family:'Syne';font-size:.9rem;transition:border var(--t)}
+.uz-search input:focus{outline:none;border-color:var(--or1)}
+.uz-search svg{position:absolute;left:13px;top:12px;color:var(--t3)}
+.uz-avt{border-radius:10px;display:inline-flex;align-items:center;justify-content:center;
+  font-weight:700;color:#fff;flex-shrink:0;font-family:'Syne'}
+.uz-reqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.uz-req{background:var(--bg2);border:1px solid var(--bd);border-radius:13px;padding:1rem 1.1rem;
+  display:flex;flex-direction:column;gap:.7rem;border-left:3px solid var(--or2)}
+.uz-req-top{display:flex;align-items:center;gap:10px}
+.uz-req-name{font-weight:600;font-size:.9rem}
+.uz-req-mail{font-family:'DM Mono',monospace;font-size:.66rem;color:var(--t2)}
+.uz-tag{font-size:.55rem;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px;text-transform:uppercase;
+  background:var(--glow2);color:var(--or2)}
+.uz-actions{display:flex;gap:8px}
+.uz-actions button{flex:1;height:36px;border-radius:9px;font-family:'Syne';font-weight:600;font-size:.78rem;cursor:pointer;
+  border:1px solid transparent;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all var(--t)}
+.uz-ap{background:rgba(16,185,129,.14);color:#10B981;border-color:rgba(16,185,129,.3)}
+.uz-ap:hover{background:rgba(16,185,129,.24)}
+.uz-rj{background:rgba(239,68,68,.1);color:#EF4444;border-color:rgba(239,68,68,.28)}
+.uz-rj:hover{background:rgba(239,68,68,.2)}
+.uz-users{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+.uz-card{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:1.1rem 1.2rem;transition:border var(--t),transform var(--t)}
+.uz-card:hover{border-color:var(--bdh);transform:translateY(-2px)}
+.uz-card.off{opacity:.6}
+.uz-card-top{display:flex;align-items:center;gap:11px;margin-bottom:.9rem}
+.uz-name{font-weight:600;font-size:.96rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.uz-mail{font-family:'DM Mono',monospace;font-size:.66rem;color:var(--t2)}
+.uz-gbadge{font-size:.55rem;font-weight:700;letter-spacing:.05em;padding:3px 9px;border-radius:6px;text-transform:uppercase}
+.uz-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.9rem}
+.uz-chip{font-size:.6rem;color:var(--t2);background:var(--bg3);border:1px solid var(--bd);padding:3px 9px;border-radius:999px;
+  display:inline-flex;align-items:center;gap:5px}
+.uz-you{font-size:.55rem;color:var(--t3);font-weight:700}
+.uz-foot{display:flex;gap:6px;border-top:1px solid var(--bd);padding-top:.8rem}
+.uz-iact{width:34px;height:34px;border-radius:8px;border:1px solid var(--bd);background:none;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;color:var(--t2);transition:all .15s}
+.uz-iact:hover{color:var(--t1);border-color:var(--bdh);background:var(--bg3)}
+.uz-iact.dg:hover{color:#EF4444;border-color:rgba(239,68,68,.4)}
+.uz-empty{color:var(--t3);font-size:.86rem;padding:1.3rem;text-align:center;grid-column:1/-1}
+.uz-gsel{display:flex;gap:8px;flex-wrap:wrap}
+.uz-gopt{padding:8px 14px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);cursor:pointer;
+  font-size:.82rem;color:var(--t2);font-weight:500;transition:all var(--t)}
+.uz-gopt.on{color:#fff;border-color:transparent}
+.uz-emps{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:200px;overflow:auto;
+  border:1px solid var(--bd);border-radius:11px;padding:.6rem}
+.uz-emp{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:.8rem;transition:background var(--t)}
+.uz-emp:hover{background:var(--bg3)}
+.uz-emp-hd{grid-column:1/-1;font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--or2);padding:7px 8px 3px;border-top:1px solid var(--bd);margin-top:3px}
+.uz-emp-hd:first-child{border-top:none;margin-top:0}
+.uz-emp input,.uz-pchk input{width:16px;height:16px;accent-color:var(--or1);cursor:pointer;flex-shrink:0}
+.uz-selall{font-size:.7rem;color:var(--or2);cursor:pointer;font-weight:600}
+.uz-ptbl{border:1px solid var(--bd);border-radius:11px;overflow:hidden}
+.uz-prow{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;border-bottom:1px solid var(--bd)}
+.uz-prow:last-child{border-bottom:none}
+.uz-prow:nth-child(even){background:var(--stripe)}
+.uz-pname{font-size:.82rem}
+.uz-pgrp{display:flex;gap:22px}
+.uz-pchk{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;width:56px;justify-content:center}
+.uz-phead{display:flex;justify-content:flex-end;gap:22px;padding:6px 13px;font-size:.58rem;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--t3);background:var(--bg3)}
+.uz-phead span{width:56px;text-align:center}
+.uz-mlbl{font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin-bottom:.15rem}
+
+/* ── Modal "Editar/Novo usuário" em tela cheia ── */
+#modUser{padding:0;align-items:stretch;justify-content:stretch}
+#modUser .mod{width:100%;height:100vh;max-width:none;max-height:100vh;border-radius:0;
+  display:flex;flex-direction:column;transform:none}
+#modUser.op .mod{transform:none}
+#modUser .mbd{flex:1;min-height:0;overflow:auto}
+#modUser .mbd > *{width:100%;max-width:940px;margin-left:auto;margin-right:auto}
+#modUser .uz-emps{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));max-height:40vh}
 </style>
 </head>
 <body>
@@ -811,7 +960,7 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
 
 <!-- HEADER -->
 <header class="hdr">
-  <div class="logo">
+  <div class="logo" onclick="irHome()" style="cursor:pointer" title="Página inicial">
     <svg class="logo-mini" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="450 353 206 220">
       <defs>
         <linearGradient id="lg-m1" x1="516.2" y1="373.76" x2="662.67" y2="520.23" gradientUnits="userSpaceOnUse">
@@ -860,37 +1009,55 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
   </button>
 
   <nav class="tabs">
-    <button class="tab on" data-p="dashboard" title="Saldo do dia">
-      <span class="tico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
-      <span class="tlbl">Saldo do dia</span>
-    </button>
-    <button class="tab" data-p="contas" title="Contas">
-      <span class="tico"><svg viewBox="0 0 24 24"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></span>
-      <span class="tlbl">Contas</span>
-    </button>
-    <button class="tab" data-p="movimentacoes" title="Movimentações">
-      <span class="tico"><svg viewBox="0 0 24 24"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg></span>
-      <span class="tlbl">Movimentações</span>
-    </button>
-    <button class="tab" data-p="emprestimos" title="Empréstimos">
+    <!-- ══ TÓPICO: BANCO ══ -->
+    <div class="tab-grp" data-grp="banco">
+      <button class="tab-hd" onclick="toggleGrp(this)" title="Banco">
+        <span class="tico"><svg viewBox="0 0 24 24"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></span>
+        <span class="tlbl">Banco</span>
+        <span class="tchev"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></span>
+      </button>
+      <div class="tab-sub">
+        <button class="tab" data-p="dashboard" title="Saldo">
+          <span class="tico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+          <span class="tlbl">Saldo</span>
+        </button>
+        <button class="tab" data-p="contas" title="Contas">
+          <span class="tico"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span>
+          <span class="tlbl">Contas</span>
+        </button>
+        <button class="tab" data-p="movimentacoes" title="Movimentações">
+          <span class="tico"><svg viewBox="0 0 24 24"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg></span>
+          <span class="tlbl">Movimentações</span>
+        </button>
+        <button class="tab" data-p="tarifas" title="Tarifa Bancária">
+          <span class="tico"><svg viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></span>
+          <span class="tlbl">Tarifa Bancária</span>
+        </button>
+        <button class="tab" data-p="saldos" title="Saldo Inicial">
+          <span class="tico"><svg viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span>
+          <span class="tlbl">Saldo Inicial</span>
+        </button>
+        <button class="tab" data-p="importar" title="Importar OFX">
+          <span class="tico"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+          <span class="tlbl">Importar OFX</span>
+        </button>
+        <button class="tab" data-p="comprovantes" title="Comprovantes">
+          <span class="tico"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg></span>
+          <span class="tlbl">Comprovantes</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ TÓPICO: EMPRÉSTIMO ══ -->
+    <button class="tab tab-topic" data-p="emprestimos" title="Empréstimo">
       <span class="tico"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg></span>
-      <span class="tlbl">Empréstimos</span>
+      <span class="tlbl">Empréstimo</span>
     </button>
-    <button class="tab" data-p="tarifas" title="Tarifa Bancária">
-      <span class="tico"><svg viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></span>
-      <span class="tlbl">Tarifa Bancária</span>
-    </button>
-    <button class="tab" data-p="saldos" title="Saldos Iniciais">
-      <span class="tico"><svg viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span>
-      <span class="tlbl">Saldos Iniciais</span>
-    </button>
-    <button class="tab" data-p="importar" title="Importar OFX">
-      <span class="tico"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
-      <span class="tlbl">Importar OFX</span>
-    </button>
-    <button class="tab" data-p="usuarios" id="tabUsuarios" style="display:none" title="Usuários">
+
+    <!-- ══ TÓPICO: USUÁRIO ══ -->
+    <button class="tab tab-topic" data-p="usuarios" id="tabUsuarios" style="display:none" title="Usuário">
       <span class="tico"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-      <span class="tlbl">Usuários</span>
+      <span class="tlbl">Usuário</span>
     </button>
   </nav>
 
@@ -908,8 +1075,77 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
 <!-- MAIN -->
 <main class="main">
 
+  <!-- ══ PÁGINA INICIAL (HUB) ══ -->
+  <section class="page on" id="page-home">
+    <div class="home-hero">
+      <svg class="home-hero-logo" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="450 353 206 220">
+        <defs>
+          <linearGradient id="lg-h1" x1="516.2" y1="373.76" x2="662.67" y2="520.23" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#f8992d"/>
+            <stop offset=".45" stop-color="#ef4237"/>
+            <stop offset=".99" stop-color="#010101"/>
+          </linearGradient>
+          <linearGradient id="lg-h2" x1="462.81" y1="427.16" x2="609.28" y2="573.63" xlink:href="#lg-h1"/>
+        </defs>
+        <path fill="url(#lg-h1)" d="M551.85,362.43v30.08c1.81,0,3.58.14,5.3.36.82.09,1.63.23,2.4.41,18.48,3.58,32.39,19.84,32.39,39.37,0,22.15-17.94,40.14-40.09,40.14-.59,0-1.13,0-1.72-.05-3.99,22.83,13.36,42.9,40.82,42.9,30.49,0,53.68-24.37,53.68-61.21,0-50.2-38.64-92.01-92.78-92.01Z"/>
+        <path fill="url(#lg-h2)" d="M551.75,563.07v-30.08c-1.81,0-3.58-.14-5.3-.36-.82-.09-1.63-.23-2.4-.41-18.48-3.58-32.39-19.84-32.39-39.37,0-22.15,17.94-40.14,40.09-40.14.59,0,1.13,0,1.72.05,3.99-22.83-13.36-42.9-40.82-42.9-30.49,0-53.68,24.37-53.68,61.21,0,50.2,38.64,92.01,92.78,92.01Z"/>
+      </svg>
+      <div>
+        <h1>Bem-vindo, Caju</h1>
+        <p>Escolha uma funcionalidade para começar.</p>
+      </div>
+    </div>
+    <div class="home-grid">
+      <button class="hcard" data-p="dashboard" onclick="irPara('dashboard')">
+        <span class="hcard-ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+        <span class="hcard-tit">Saldo</span>
+        <span class="hcard-desc">Saldo do dia e visão geral das contas.</span>
+      </button>
+      <button class="hcard" data-p="contas" onclick="irPara('contas')">
+        <span class="hcard-ico"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span>
+        <span class="hcard-tit">Contas</span>
+        <span class="hcard-desc">Gerencie as contas bancárias.</span>
+      </button>
+      <button class="hcard" data-p="movimentacoes" onclick="irPara('movimentacoes')">
+        <span class="hcard-ico"><svg viewBox="0 0 24 24"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg></span>
+        <span class="hcard-tit">Movimentações</span>
+        <span class="hcard-desc">Entradas e saídas importadas.</span>
+      </button>
+      <button class="hcard" data-p="tarifas" onclick="irPara('tarifas')">
+        <span class="hcard-ico"><svg viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></span>
+        <span class="hcard-tit">Tarifa Bancária</span>
+        <span class="hcard-desc">Análise das tarifas pagas.</span>
+      </button>
+      <button class="hcard" data-p="saldos" onclick="irPara('saldos')">
+        <span class="hcard-ico"><svg viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span>
+        <span class="hcard-tit">Saldo Inicial</span>
+        <span class="hcard-desc">Defina os saldos iniciais das contas.</span>
+      </button>
+      <button class="hcard" data-p="importar" onclick="irPara('importar')">
+        <span class="hcard-ico"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+        <span class="hcard-tit">Importar OFX</span>
+        <span class="hcard-desc">Importe extratos no formato OFX.</span>
+      </button>
+      <button class="hcard" data-p="comprovantes" onclick="irPara('comprovantes')">
+        <span class="hcard-ico"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg></span>
+        <span class="hcard-tit">Comprovantes</span>
+        <span class="hcard-desc">Comprovantes Santander e Itaú pela API.</span>
+      </button>
+      <button class="hcard" data-p="emprestimos" onclick="irPara('emprestimos')">
+        <span class="hcard-ico"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg></span>
+        <span class="hcard-tit">Empréstimo</span>
+        <span class="hcard-desc">Controle de parcelas e baixas.</span>
+      </button>
+      <button class="hcard" data-p="usuarios" onclick="irPara('usuarios')">
+        <span class="hcard-ico"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <span class="hcard-tit">Usuário</span>
+        <span class="hcard-desc">Gestão de usuários e acessos.</span>
+      </button>
+    </div>
+  </section>
+
   <!-- ══ DASHBOARD ══ -->
-  <section class="page on" id="page-dashboard">
+  <section class="page" id="page-dashboard">
     <div class="pbar">
       <span class="plbl">Período</span>
       <select id="selPeriodo" class="pdt" style="font-weight:700;min-width:140px" onchange="onSelPeriodo(this.value)">
@@ -1261,6 +1497,203 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
     </div>
   </section>
 
+  <!-- ══ COMPROVANTES (Santander + Itaú via proxy local) ══ -->
+  <section class="page" id="page-comprovantes">
+    <div class="cpage-hdr" style="margin-bottom:1.1rem">
+      <div class="cmp-subnav">
+        <button class="cmp-tab on" data-view="comprovantes">Comprovantes</button>
+        <button class="cmp-tab" data-view="contas">Contas</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="cmp-badge" id="cmpConn" title="Status da conexão com o proxy"><span class="cmp-dot"></span><span id="cmpConnTxt">Verificando…</span></span>
+        <button class="rbtn" id="cmpCfgBtn" title="Configurar conexão da API" style="padding:6px 10px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="cmp-view" id="cmpViewComprovantes">
+    <div class="pbar">
+      <span class="plbl">Conta</span>
+      <select id="cmpConta" class="pdt" style="min-width:240px;font-weight:700">
+        <option value="">Todas as contas</option>
+      </select>
+      <span class="plbl" style="margin-left:6px">Período</span>
+      <div class="pdt-wrap">
+        <span class="pdt-lbl">De</span>
+        <input type="date" id="cmpDe" class="pdt" title="Data inicial"/>
+        <span class="pdt-lbl" style="margin-left:2px">Até</span>
+        <input type="date" id="cmpAte" class="pdt" title="Data final"/>
+      </div>
+      <button class="rbtn" id="cmpConsult">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8"/><path d="M21 3v5h-5"/>
+          <path d="M21 12a9 9 0 01-9 9 9.75 9.75 0 01-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
+        </svg>Consultar
+      </button>
+      <span class="pdate" id="cmpStatus"></span>
+    </div>
+    <div class="cmp-hint">⚠ Intervalo máximo de 30 dias (regra da API Santander). Santander devolve o comprovante oficial; Itaú gera o comprovante a partir do lançamento.</div>
+
+    <div class="shdr">
+      <span class="stit">Comprovantes por categoria</span><span class="sln"></span>
+      <span class="stit" id="cmpCatLbl" style="color:var(--or1)"></span>
+    </div>
+    <div class="mgrid" id="cmpCats">
+      <div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div>
+      <div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div>
+    </div>
+
+    <div class="shdr">
+      <span class="stit">Detalhe dos comprovantes</span><span class="sln"></span>
+      <span class="stit" id="cmpCount"></span>
+    </div>
+    <div class="cmp-search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" id="cmpSearch" placeholder="Buscar por beneficiário, ID ou valor..."/>
+    </div>
+    <div class="twrap" style="overflow-x:auto">
+      <table class="dtbl">
+        <colgroup>
+          <col style="width:9%"><col style="width:11%"><col style="width:20%"><col style="width:12%">
+          <col style="width:16%"><col style="width:11%"><col style="width:9%"><col style="width:9%"><col style="width:9%">
+        </colgroup>
+        <thead><tr>
+          <th>Data / Hora</th><th>Categoria</th><th>Beneficiário</th><th>Documento</th>
+          <th>Conta</th><th>Ag. / Conta</th><th>Canal</th><th class="r">Valor</th><th>PDF</th>
+        </tr></thead>
+        <tbody id="cmpBody">
+          <tr><td colspan="9" class="ecel">Clique em “Consultar” para carregar os comprovantes do período.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="shdr" style="margin-top:2.2rem">
+      <span class="stit">Solicitações de comprovante</span><span class="sln"></span>
+      <button class="bp" id="cmpSolicBtn" style="padding:6px 14px;font-size:.74rem">＋ Não encontrou seu comprovante? Solicite</button>
+    </div>
+    <div class="cmp-hint">Não achou um comprovante na lista? Solicite ao financeiro. Prazo de resposta: <b>até 72h</b>. O comprovante enviado fica disponível para download por <b>5 dias</b>.</div>
+    <div class="twrap" style="overflow-x:auto">
+      <table class="dtbl">
+        <colgroup><col style="width:11%"><col style="width:15%"><col style="width:12%"><col style="width:17%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:12%"></colgroup>
+        <thead><tr><th>Data</th><th>Empresa</th><th>Título Everest</th><th>Fornecedor</th><th class="r">Valor</th><th>Liquidação</th><th>Status</th><th>Ação</th></tr></thead>
+        <tbody id="cmpSolicBody"><tr><td colspan="8" class="ecel">Nenhuma solicitação registrada.</td></tr></tbody>
+      </table>
+    </div>
+    </div><!-- /cmpViewComprovantes -->
+
+    <div class="cmp-view" id="cmpViewContas" style="display:none">
+      <div class="shdr">
+        <span class="stit">Contas cadastradas (Santander + Itaú)</span><span class="sln"></span>
+        <button class="bp" id="cmpNovaConta" style="padding:5px 13px;font-size:.72rem">+ Nova conta</button>
+      </div>
+      <div class="cmp-hint">Cadastre cada conta escolhendo o banco, preenchendo os dados e anexando o certificado — tudo é salvo no proxy local (nada é digitado à mão nos arquivos).</div>
+      <div class="twrap" style="overflow-x:auto">
+        <table class="dtbl">
+          <colgroup><col style="width:22%"><col style="width:11%"><col style="width:10%"><col style="width:15%"><col style="width:19%"><col style="width:12%"><col style="width:11%"></colgroup>
+          <thead><tr><th>Empresa</th><th>Banco</th><th>Agência</th><th>Conta</th><th>CNPJ</th><th>Certificado</th><th>Ações</th></tr></thead>
+          <tbody id="cmpContasBody"><tr><td colspan="7" class="ecel">Carregando contas…</td></tr></tbody>
+        </table>
+      </div>
+    </div><!-- /cmpViewContas -->
+  </section>
+
+  <!-- Modal: conexão com o proxy (engrenagem) -->
+  <div class="mov" id="cmpModCfg">
+    <div class="mod" style="max-width:460px">
+      <div class="mhd"><h3>Conexão com o proxy</h3><button class="mcl" id="cmpCfgClose">✕</button></div>
+      <div class="mbd">
+        <div class="cmp-note">O proxy local (<b>comprovantes-proxy</b>) cuida da autenticação (OAuth + certificado) dos bancos. Informe a URL onde ele está rodando — normalmente <code>http://localhost:3000</code>.</div>
+        <div class="mft"><label>URL do proxy</label><input class="fi2" id="cmpCfgUrl" placeholder="http://localhost:3000"/></div>
+      </div>
+      <div class="mfo"><button class="bs" id="cmpCfgCancel">Cancelar</button><button class="bp" id="cmpCfgSave">Salvar e conectar</button></div>
+    </div>
+  </div>
+
+  <!-- Modal: cadastro/edição de conta da API -->
+  <div class="mov" id="cmpModConta">
+    <div class="mod">
+      <div class="mhd"><h3 id="cmpMcTitle">Nova conta</h3><button class="mcl" id="cmpMcClose">✕</button></div>
+      <div class="mbd">
+        <div class="mft"><label>Banco</label>
+          <select class="fi2" id="cmpMcBank"><option value="santander">Santander</option><option value="itau">Itaú</option></select>
+        </div>
+        <div class="mfr">
+          <div class="mft"><label>Nome / Empresa</label><input class="fi2" id="cmpMcNome" placeholder="Ex: MULT 02"/></div>
+          <div class="mft"><label>CNPJ (só números)</label><input class="fi2" id="cmpMcCnpj" placeholder="35631524000165"/></div>
+        </div>
+        <div class="mfr">
+          <div class="mft"><label>Agência</label><input class="fi2" id="cmpMcAg" placeholder="0000"/></div>
+          <div class="mft"><label>Conta</label><input class="fi2" id="cmpMcAcc" placeholder="00000-0"/></div>
+          <div class="mft cmp-only-itau"><label>DAC</label><input class="fi2" id="cmpMcDac" placeholder="0"/></div>
+        </div>
+        <div class="mfr">
+          <div class="mft"><label>Cor</label><input type="color" class="fi2" id="cmpMcColor" value="#E8430A"/></div>
+          <div class="mft"><label>Chave <span style="color:var(--t3);font-weight:400">(id interno, opcional)</span></label><input class="fi2" id="cmpMcKeyIn" placeholder="gerada do nome"/></div>
+        </div>
+        <div class="cmp-mcsec">Credenciais da API</div>
+        <div class="mfr">
+          <div class="mft"><label>Client ID</label><input class="fi2" id="cmpMcClientId" placeholder="client_id"/></div>
+          <div class="mft"><label>Client Secret</label><input class="fi2" type="password" id="cmpMcClientSecret" placeholder="em branco = manter"/></div>
+        </div>
+        <div class="mft"><label id="cmpMcAppKeyLbl">X-Application-Key</label><input class="fi2" id="cmpMcAppKey" placeholder="opcional (vazio usa o Client ID)"/></div>
+        <div class="cmp-mcsec">Certificado</div>
+        <div class="cmp-only-santander">
+          <div class="mfr">
+            <div class="mft"><label>Arquivo .pfx</label><input class="fi2" type="file" id="cmpMcPfx" accept=".pfx,.p12"/></div>
+            <div class="mft"><label>Senha do .pfx</label><input class="fi2" type="password" id="cmpMcPfxPass" placeholder="em branco = manter"/></div>
+          </div>
+        </div>
+        <div class="cmp-only-itau">
+          <div class="mfr">
+            <div class="mft"><label>Arquivo .crt</label><input class="fi2" type="file" id="cmpMcCrt" accept=".crt,.pem,.cer"/></div>
+            <div class="mft"><label>Arquivo .key</label><input class="fi2" type="file" id="cmpMcKeyFile" accept=".key,.pem"/></div>
+          </div>
+        </div>
+        <div id="cmpMcCertState" style="font-size:.7rem;color:var(--t3);margin-top:.3rem"></div>
+      </div>
+      <div class="mfo">
+        <button class="bs" id="cmpMcDelete" style="margin-right:auto;color:#EF4444;border-color:rgba(239,68,68,.35)">Remover</button>
+        <button class="bs" id="cmpMcCancel">Cancelar</button>
+        <button class="bp" id="cmpMcSave">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: solicitar comprovante -->
+  <div class="mov" id="cmpModSolic">
+    <div class="mod">
+      <div class="mhd"><h3>Solicitar comprovante</h3><button class="mcl" id="cmpSolicClose">✕</button></div>
+      <div class="mbd">
+        <div class="cmp-note">⏱ Prazo de resposta: <b>até 72h</b>. Ao enviar, o responsável do financeiro da empresa é notificado. Quando o comprovante for anexado, você recebe uma notificação e o download fica disponível por <b>5 dias</b>.</div>
+        <div class="mft"><label>Empresa</label><select class="fi2" id="cmpSolicEmpresa"></select></div>
+        <div class="mfr">
+          <div class="mft"><label>Nº do título no Everest</label><input class="fi2" id="cmpSolicTitulo" placeholder="Ex: 123456"/></div>
+          <div class="mft"><label>Data de liquidação</label><input type="date" class="fi2" id="cmpSolicData"/></div>
+        </div>
+        <div class="mfr">
+          <div class="mft"><label>Nome do fornecedor</label><input class="fi2" id="cmpSolicForn" placeholder="Ex: Distribuidora X Ltda"/></div>
+          <div class="mft"><label>Valor de pagamento</label><input class="fi2" id="cmpSolicValor" placeholder="0,00"/></div>
+        </div>
+      </div>
+      <div class="mfo"><button class="bs" id="cmpSolicCancel">Cancelar</button><button class="bp" id="cmpSolicSend">Enviar solicitação</button></div>
+    </div>
+  </div>
+
+  <!-- Modal: responder solicitação (financeiro) -->
+  <div class="mov" id="cmpModResp">
+    <div class="mod" style="max-width:470px">
+      <div class="mhd"><h3>Responder solicitação</h3><button class="mcl" id="cmpRespClose">✕</button></div>
+      <div class="mbd">
+        <div class="cmp-note" id="cmpRespInfo"></div>
+        <div class="mft"><label>Comprovante (PDF, imagem…)</label><input class="fi2" type="file" id="cmpRespFile" accept=".pdf,.png,.jpg,.jpeg,.webp"/></div>
+        <div class="mft"><label>Observação (opcional)</label><input class="fi2" id="cmpRespObs" placeholder="ex: segue comprovante do pagamento"/></div>
+        <div style="font-size:.7rem;color:var(--t3);margin-top:.2rem">O arquivo ficará disponível para o solicitante por <b>5 dias</b>.</div>
+      </div>
+      <div class="mfo"><button class="bs" id="cmpRespCancel">Cancelar</button><button class="bp" id="cmpRespSend">Enviar comprovante</button></div>
+    </div>
+  </div>
+
   <!-- ══ USUÁRIOS (apenas ADM) ══ -->
   <section class="page" id="page-usuarios">
     <div class="cpage-hdr">
@@ -1270,44 +1703,29 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
     <!-- KPIs rápidos -->
     <div class="usr-stats" id="usrStats"></div>
 
-    <!-- Pendentes de aprovação -->
+    <!-- Solicitações (cadastros pendentes) -->
     <div class="shdr" id="shdrPendentes" style="display:none">
-      <span class="stit" style="color:var(--or2)">Aguardando aprovação</span>
+      <span class="stit" style="color:var(--or2)">Solicitações de acesso</span>
       <span class="sln"></span>
     </div>
-    <div class="twrap" id="wrapPendentes" style="display:none;margin-bottom:1.5rem">
-      <table class="dtbl" style="table-layout:auto">
-        <colgroup><col style="width:30%"><col style="width:28%"><col style="width:14%"><col style="width:28%"></colgroup>
-        <thead><tr><th>Nome</th><th>E-mail</th><th>Solicitado em</th><th>Ações</th></tr></thead>
-        <tbody id="tbPendentes"></tbody>
-      </table>
-    </div>
+    <div class="uz-reqs" id="uzReqs" style="display:none;margin-bottom:.5rem"></div>
 
-    <!-- Usuários ativos -->
+    <!-- Usuários -->
     <div class="shdr">
-      <span class="stit">Usuários ativos</span>
+      <span class="stit">Usuários</span>
       <span class="sln"></span>
     </div>
-    <div class="twrap" style="margin-bottom:1.5rem">
-      <table class="dtbl" style="table-layout:auto">
-        <colgroup><col style="width:22%"><col style="width:26%"><col style="width:10%"><col style="width:12%"><col></colgroup>
-        <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Desde</th><th>Ações</th></tr></thead>
-        <tbody id="tbAtivos"></tbody>
-      </table>
+    <div class="uz-tbar">
+      <div class="uz-search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="uzBusca" placeholder="Buscar por nome ou e-mail..." oninput="renderUzUsers()"/>
+      </div>
+      <button class="bp" onclick="abrirModUser()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Novo usuário
+      </button>
     </div>
-
-    <!-- Inativos / Rejeitados -->
-    <div class="shdr">
-      <span class="stit">Inativos / Rejeitados</span>
-      <span class="sln"></span>
-    </div>
-    <div class="twrap">
-      <table class="dtbl" style="table-layout:auto">
-        <colgroup><col style="width:24%"><col style="width:28%"><col style="width:12%"><col style="width:12%"><col></colgroup>
-        <thead><tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Desde</th><th>Ações</th></tr></thead>
-        <tbody id="tbInativos"></tbody>
-      </table>
-    </div>
+    <div class="uz-users" id="uzUsers"></div>
   </section>
 
   <!-- ══ EMPRÉSTIMOS ══ -->
@@ -1476,16 +1894,64 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
   </div>
 </div>
 
+<!-- MODAL USUÁRIO (criar / editar) -->
+<div class="mov" id="modUser" style="display:none">
+  <div class="mod">
+    <div class="mhd">
+      <h3 id="muTit">Novo usuário</h3>
+      <button class="mcl" onclick="closeModUser()">✕</button>
+    </div>
+    <div class="mbd">
+      <input type="hidden" id="muId"/>
+      <div class="mfr">
+        <div class="mft"><label>Nome completo</label><input class="fi2" id="muNome" placeholder="Nome do colaborador"/></div>
+        <div class="mft"><label>E-mail corporativo</label><input class="fi2" id="muMail" placeholder="nome@cajupar.com"/></div>
+      </div>
+      <div class="mft" id="muSenhaRow">
+        <label>Senha inicial</label>
+        <input class="fi2" type="password" id="muSenha" placeholder="Mínimo 6 caracteres"/>
+      </div>
+
+      <div class="mft">
+        <span class="uz-mlbl">Grupo de acesso</span>
+        <div class="uz-gsel" id="muGsel"></div>
+      </div>
+
+      <div class="mft">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="uz-mlbl">Empresas vinculadas</span>
+          <span class="uz-selall" id="muSelAll" onclick="uzToggleAllEmp()">Selecionar todas</span>
+        </div>
+        <div class="uz-emps" id="muEmps"></div>
+      </div>
+
+      <div class="mft">
+        <span class="uz-mlbl">Permissões por módulo</span>
+        <div class="uz-phead"><span>Ver</span><span>Editar</span></div>
+        <div class="uz-ptbl" id="muPtbl"></div>
+      </div>
+      <div id="muErro" style="font-size:.76rem;color:#EF4444;min-height:1rem;text-align:center"></div>
+    </div>
+    <div class="mfo">
+      <button class="bs" onclick="closeModUser()">Cancelar</button>
+      <button class="bp" onclick="salvarUser()">Salvar usuário</button>
+    </div>
+  </div>
+</div>
+
 <div class="tst" id="toast"></div>
 
 <script>
 /* ═══════════════════════════════════════════════
    SUPABASE — cliente
 ═══════════════════════════════════════════════ */
-const _SB = supabase.createClient(
-  'https://ubcoplavpmwulnhzigxg.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY29wbGF2cG13dWxuaHppZ3hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODU5NjEsImV4cCI6MjA5NDc2MTk2MX0.doSNGFjGSdM7X47UEaGOG2AAva8qavBh1jLGysI7rSM'
-);
+const _SB_URL = 'https://ubcoplavpmwulnhzigxg.supabase.co';
+const _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY29wbGF2cG13dWxuaHppZ3hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODU5NjEsImV4cCI6MjA5NDc2MTk2MX0.doSNGFjGSdM7X47UEaGOG2AAva8qavBh1jLGysI7rSM';
+const _SB = supabase.createClient(_SB_URL, _SB_KEY);
+/* Cliente isolado: cria usuário sem trocar a sessão do admin logado */
+const _SB2 = supabase.createClient(_SB_URL, _SB_KEY, {
+  auth:{ persistSession:false, autoRefreshToken:false, storageKey:'sb-admin-create' }
+});
 
 /* ── Cache em memória (carregado do Supabase no login) ── */
 let _contas = [];
@@ -1502,8 +1968,29 @@ function mapTx(t){
   return { id:t.id, contaId:+t.conta_id, data:t.data,
     desc:t.descricao||'', valor:parseFloat(t.valor)||0, tipo:t.tipo, fitid:t.fitid };
 }
-function getContas(){ return _contas; }
-function getTx()    { return _tx; }
+/* Chave da conta no mesmo formato das "empresas vinculadas": "Loja - Banco". */
+function contaKey(c){
+  const loja  = (c.loja && c.loja.trim()) ? c.loja.trim() : (c.empresa||'').trim();
+  const banco = (c.banco||'').trim() || 'Sem banco';
+  return `${loja} - ${banco}`;
+}
+/* Filtro por perfil: admin vê tudo; demais veem só as empresas atribuídas. */
+function _contasPermitidas(lista){
+  if(_currentUser && _currentUser.role!=='admin' && Array.isArray(_currentUser.empresas)){
+    const allow = new Set(_currentUser.empresas);
+    return lista.filter(c => allow.has(contaKey(c)));
+  }
+  return lista;
+}
+function getContas(){ return _contasPermitidas(_contas); }
+function getContasTodas(){ return _contas; }   // lista completa (uso interno/admin)
+function getTx(){
+  if(_currentUser && _currentUser.role!=='admin' && Array.isArray(_currentUser.empresas)){
+    const ids = new Set(getContas().map(c=>c.id));
+    return _tx.filter(t => ids.has(t.contaId));
+  }
+  return _tx;
+}
 function getImps()  { return _imps; }
 
 // Carrega TODAS as transações sob demanda (só quando alguma tela precisa).
@@ -1696,15 +2183,40 @@ const Auth = {
     return { ok:true };
   },
 
-  aplicarPermissoes(){
+  async aplicarPermissoes(){
     const u = _currentUser; if(!u) return;
     const isAdm = u.role==='admin';
-    ['saldos','importar'].forEach(p=>{
-      const t = document.querySelector(`.tab[data-p="${p}"]`);
-      if(t) t.style.display = isAdm ? '' : 'none';
+    await uzEnsureModulos();
+
+    // Calcula os níveis do usuário: admin = tudo; senão padrão do grupo + o que foi salvo.
+    if(isAdm){
+      _permNiveis = {};
+    } else {
+      // Sem grupo definido → somente ver (padrão seguro até o admin configurar).
+      const base  = uzPermsPadrao(u.grupo || '');
+      const salvo = (u.permissoes && typeof u.permissoes==='object') ? u.permissoes : {};
+      _permNiveis = { ...base, ...salvo };
+    }
+
+    // Visibilidade de abas e cards por módulo (chave = data-p).
+    UZ_MODULOS.forEach(m=>{
+      const vis = isAdm || podeVer(m.chave);
+      document.querySelectorAll(`.tab[data-p="${m.chave}"]`).forEach(t=>t.style.display = vis?'':'none');
+      document.querySelectorAll(`.hcard[data-p="${m.chave}"]`).forEach(c=>c.style.display = vis?'':'none');
     });
+    // "Usuários" é sempre exclusivo de administradores.
     const tabU = document.getElementById('tabUsuarios');
     if(tabU) tabU.style.display = isAdm ? '' : 'none';
+    document.querySelectorAll('.hcard[data-p="usuarios"]').forEach(c=>c.style.display = isAdm ? '' : 'none');
+
+    // Trava de ações de edição (botões estáticos por página).
+    const gate = (id, chave)=>{ const el=document.getElementById(id); if(el) el.style.display = (isAdm||podeEditar(chave)) ? '' : 'none'; };
+    gate('btnNova','contas');
+    gate('btnLimpar','importar');
+    gate('btnProcSant','importar');
+    gate('btnProcItau','importar');
+
+    // Badge do usuário no topo.
     const badge = document.getElementById('userBadge');
     if(badge){
       badge.style.display='flex';
@@ -1712,7 +2224,7 @@ const Auth = {
       document.getElementById('userAvatar').textContent = ini;
       document.getElementById('userNome').textContent   = u.nome || u.email;
       const roleTag = document.getElementById('userRoleTag');
-      roleTag.textContent = isAdm ? 'ADM' : 'Usuário';
+      roleTag.textContent = isAdm ? 'ADM' : (u.grupo || 'Usuário');
       roleTag.className = 'user-role ' + (isAdm ? 'role-adm' : 'role-usr');
     }
   },
@@ -1750,9 +2262,32 @@ const Auth = {
       return false;
     }
     _currentUser = profile;
-    this.aplicarPermissoes();
+    await this.aplicarPermissoes();
     return true;
   }
+};
+
+/* Salva grupo, empresas e permissões de um usuário (apenas atualização de perfil) */
+Auth.saveUserConfig = async function(id, campos){
+  const { error } = await _SB.from('profiles').update(campos).eq('id', id);
+  if(error) return { ok:false, msg:error.message };
+  return { ok:true };
+};
+
+/* Cria um novo usuário já ativo, sem derrubar a sessão do admin (usa cliente isolado) */
+Auth.createUser = async function({ email, nome, senha, grupo, empresas, permissoes }){
+  email = (email||'').trim().toLowerCase();
+  if(!email.endsWith('@cajupar.com')) return { ok:false, msg:'Use somente e-mails @cajupar.com.' };
+  if((senha||'').length < 6)         return { ok:false, msg:'A senha deve ter no mínimo 6 caracteres.' };
+  const { data, error } = await _SB2.auth.signUp({ email, password: senha, options:{ data:{ nome } } });
+  if(error) return { ok:false, msg:error.message };
+  const uid = data.user?.id;
+  // O gatilho handle_new_user cria o perfil como 'pending'; ativamos e gravamos a config.
+  if(uid){
+    await _SB.from('profiles').update({ status:'active', nome, grupo, empresas, permissoes }).eq('id', uid);
+  }
+  try{ await _SB2.auth.signOut(); }catch(e){}
+  return { ok:true };
 };
 
 // Mensagem na tela de login (usada pelo fluxo de aprovação / domínio / OAuth)
@@ -1786,7 +2321,7 @@ async function handleSetup(){
   const r=await Auth.setupAdmin(email,nome,senha);
   if(!r.ok){erroEl.textContent=r.msg;return;}
   authShowScreen('');
-  Auth.aplicarPermissoes();
+  await Auth.aplicarPermissoes();
   await loadAllData();
   initApp();
 }
@@ -1801,7 +2336,7 @@ async function handleLogin(){
   const r=await Auth.login(email,senha);
   if(!r.ok){erroEl.textContent=r.msg;return;}
   authShowScreen('');
-  Auth.aplicarPermissoes();
+  await Auth.aplicarPermissoes();
   await loadAllData();
   initApp();
 }
@@ -1826,103 +2361,263 @@ async function handleRegister(){
 }
 
 /* ── Renderiza página de usuários ── */
+/* ═══ Config de grupos, empresas e módulos (Gestão de Usuários) ═══ */
+const UZ_GRUPOS = [
+  {id:'Financeiro', hex:'#E8430A'},
+  {id:'RH',         hex:'#8B5CF6'},
+  {id:'Diretoria',  hex:'#3B82F6'},
+  {id:'Sócio proprietário', hex:'#10B981'}
+];
+const uzGrpHex = g => (UZ_GRUPOS.find(x=>x.id===g)||{}).hex || 'var(--t3)';
+/* Lista de empresas carregada do que está cadastrado (tabela contas).
+   Assim toda empresa nova cadastrada aparece automaticamente aqui. */
+let UZ_EMPRESAS = [];
+async function uzEnsureEmpresas(force){
+  if(UZ_EMPRESAS.length && !force) return;
+  const { data } = await _SB.from('contas').select('loja,empresa,banco').order('banco');
+  const seen = new Set(), lista = [];
+  (data||[]).forEach(c=>{
+    const loja  = (c.loja && c.loja.trim()) ? c.loja.trim() : (c.empresa||'').trim();
+    if(!loja) return;
+    const banco = (c.banco||'').trim() || 'Sem banco';
+    const nome  = `${loja} - ${banco}`;   // ordem invertida: loja na frente
+    if(!seen.has(nome)){ seen.add(nome); lista.push({ banco, loja, nome }); }
+  });
+  UZ_EMPRESAS = lista.sort((a,b)=> a.banco.localeCompare(b.banco,'pt-BR') || a.loja.localeCompare(b.loja,'pt-BR'));
+}
+/* Módulos carregados da tabela `modulos` (nome exibido + chave = página do site).
+   Todo módulo novo cadastrado lá aparece automaticamente aqui e já entra no
+   nível do grupo de cada usuário. A lista abaixo é só fallback. */
+let UZ_MODULOS = [
+  {nome:'Saldo (visão geral)', chave:'dashboard'},
+  {nome:'Contas bancárias',    chave:'contas'},
+  {nome:'Movimentações',       chave:'movimentacoes'},
+  {nome:'Tarifas',             chave:'tarifas'},
+  {nome:'Saldo inicial',       chave:'saldos'},
+  {nome:'Importar OFX',        chave:'importar'},
+  {nome:'Comprovantes',        chave:'comprovantes'},
+  {nome:'Empréstimos',         chave:'emprestimos'},
+  {nome:'Usuários',            chave:'usuarios'},
+];
+let _uzModulosCarregado = false;
+async function uzEnsureModulos(force){
+  if(_uzModulosCarregado && !force) return;
+  const { data, error } = await _SB.from('modulos').select('nome,chave').eq('ativo',true).order('ordem');
+  if(!error && Array.isArray(data) && data.length){
+    UZ_MODULOS = data.map(m=>({ nome:m.nome, chave:m.chave || m.nome }));
+  }
+  _uzModulosCarregado = true;
+}
+
+/* Níveis de permissão do usuário logado, por chave de módulo.
+   Admin sempre tem acesso total. */
+let _permNiveis = {};
+function nivelPerm(chave){
+  if(_currentUser && _currentUser.role==='admin') return 'edit';
+  return _permNiveis[chave] || 'none';
+}
+function podeVer(chave){ return nivelPerm(chave) !== 'none'; }
+function podeEditar(chave){ return nivelPerm(chave) === 'edit'; }
+function uzPermsPadrao(g){
+  const all=v=>Object.fromEntries(UZ_MODULOS.map(m=>[m.chave, v]));
+  // Financeiro faz tudo (editar); RH, Diretoria e Sócio proprietário só visualizam.
+  return g==='Financeiro' ? all('edit') : all('view');
+}
+const uzIni = n => (n||'?').trim().split(' ').filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase() || '?';
+
+const ICONS = {
+  edit: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+  key:  `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="3.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>`,
+  up:   `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>`,
+  down: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`,
+  pause:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`,
+  play: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+  trash:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>`,
+};
+
+let _uzUsers = [];
+
 async function renderUsuarios(){
   if(!Auth.isAdmin()) return;
+  await Promise.all([uzEnsureEmpresas(), uzEnsureModulos()]);
   const { data: users } = await _SB.from('profiles').select('*').order('created_at');
-  const u = users || [];
-  const session = Auth.currentUser();
+  _uzUsers = users || [];
+  const total  = _uzUsers.length;
+  const ativos = _uzUsers.filter(x=>x.status==='active').length;
+  const adms   = _uzUsers.filter(x=>x.role==='admin').length;
+  const pend   = _uzUsers.filter(x=>x.status==='pending');
 
-  // KPIs
-  const ativos   = u.filter(x=>x.status==='active').length;
-  const pendentes= u.filter(x=>x.status==='pending').length;
   document.getElementById('usrStats').innerHTML = `
-    <div class="usr-kpi"><div class="usr-kpi-lbl">Total</div><div class="usr-kpi-val">${u.length}</div></div>
+    <div class="usr-kpi"><div class="usr-kpi-lbl">Total</div><div class="usr-kpi-val">${total}</div></div>
     <div class="usr-kpi"><div class="usr-kpi-lbl">Ativos</div><div class="usr-kpi-val" style="color:#10B981">${ativos}</div></div>
-    <div class="usr-kpi"><div class="usr-kpi-lbl">Pendentes</div><div class="usr-kpi-val" style="color:var(--or2)">${pendentes}</div></div>
-  `;
+    <div class="usr-kpi"><div class="usr-kpi-lbl">Administradores</div><div class="usr-kpi-val" style="color:var(--or1)">${adms}</div></div>
+    <div class="usr-kpi"><div class="usr-kpi-lbl">Solicitações</div><div class="usr-kpi-val" style="color:var(--or2)">${pend.length}</div></div>`;
 
-  // ── Ícones SVG reutilizáveis ──────────────────────────────────
-  const ICO = {
-    check: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
-    x:     `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
-    key:   `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="3.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>`,
-    up:    `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>`,
-    down:  `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`,
-    pause: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`,
-    play:  `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
-    trash: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>`,
-  };
+  const shdr = document.getElementById('shdrPendentes');
+  const reqs = document.getElementById('uzReqs');
+  shdr.style.display = pend.length ? '' : 'none';
+  reqs.style.display = pend.length ? 'grid' : 'none';
+  reqs.innerHTML = pend.map(x=>`
+    <div class="uz-req">
+      <div class="uz-req-top">
+        <div class="uz-avt" style="width:38px;height:38px;font-size:.8rem;background:var(--or2)">${uzIni(x.nome)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="uz-req-name">${x.nome||'—'}</div>
+          <div class="uz-req-mail">${x.email}</div>
+        </div>
+        <span class="uz-tag">Cadastro</span>
+      </div>
+      <div style="font-size:.66rem;color:var(--t3)">Solicitou acesso · ${fmtData(x.created_at)}</div>
+      <div class="uz-actions">
+        <button class="uz-ap" onclick="Auth.approveUser('${x.id}')">Aprovar</button>
+        <button class="uz-rj" onclick="Auth.rejectUser('${x.id}')">Recusar</button>
+      </div>
+    </div>`).join('');
 
-  // Gerador de botão ícone consistente
-  const iBtn = (fn, ico, color, title) =>
-    `<button onclick="${fn}" title="${title}"
-      style="background:none;border:1px solid ${color}40;border-radius:6px;
-      width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;
-      cursor:pointer;color:${color};transition:all .15s;flex-shrink:0;vertical-align:middle"
-      onmouseover="this.style.background='${color}18';this.style.borderColor='${color}80'"
-      onmouseout="this.style.background='none';this.style.borderColor='${color}40'"
-    >${ico}</button>`;
+  renderUzUsers();
+}
 
-  const tdAcao = `style="white-space:nowrap;vertical-align:middle"`;
+function renderUzUsers(){
+  const q = (document.getElementById('uzBusca')?.value||'').toLowerCase();
+  const session = Auth.currentUser();
+  const list = _uzUsers.filter(x=>x.status!=='pending')
+    .filter(x=>(x.nome||'').toLowerCase().includes(q)||(x.email||'').toLowerCase().includes(q));
+  const el = document.getElementById('uzUsers');
+  if(!list.length){ el.innerHTML = `<div class="uz-empty">Nenhum usuário encontrado.</div>`; return; }
+  el.innerHTML = list.map(x=>{
+    const isMe = session && session.id===x.id, isAdm = x.role==='admin';
+    const grupo = x.grupo || 'Sem grupo', hex = uzGrpHex(x.grupo);
+    const empValidas = new Set(UZ_EMPRESAS.map(e=>e.nome));
+    const emps = (Array.isArray(x.empresas)?x.empresas:[]).filter(e=>empValidas.has(e));
+    const chavesAtuais = new Set(UZ_MODULOS.map(m=>m.chave));
+    const permEntries = Object.entries((x.permissoes&&typeof x.permissoes==='object')?x.permissoes:{}).filter(([k])=>chavesAtuais.has(k));
+    const nView = permEntries.filter(([,v])=>v==='view').length;
+    const nEdit = permEntries.filter(([,v])=>v==='edit').length;
+    const off = x.status!=='active';
+    const stBadge = x.status==='rejected' ? `<span class="uz-gbadge st-rejected">Rejeitado</span>`
+                  : x.status==='inactive' ? `<span class="uz-gbadge st-inactive">Inativo</span>` : '';
+    const nomeSafe = (x.nome||'').replace(/'/g,"\\'");
+    return `<div class="uz-card ${off?'off':''}">
+      <div class="uz-card-top">
+        <div class="uz-avt" style="width:42px;height:42px;font-size:.85rem;background:${hex}">${uzIni(x.nome)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="uz-name">${x.nome||'—'}${isMe?`<span class="uz-you">(você)</span>`:''}${isAdm?`<span class="uz-gbadge role-adm">ADM</span>`:''}${stBadge}</div>
+          <div class="uz-mail">${x.email}</div>
+        </div>
+        <span class="uz-gbadge" style="background:${hex}22;color:${hex}">${grupo}</span>
+      </div>
+      <div class="uz-meta">
+        <span class="uz-chip">${emps.length} empresas</span>
+        <span class="uz-chip">${nView} ver</span>
+        <span class="uz-chip">${nEdit} editar</span>
+      </div>
+      <div class="uz-foot">
+        <button class="uz-iact" title="Editar" onclick="abrirModUser('${x.id}')">${ICONS.edit}</button>
+        <button class="uz-iact" title="Alterar senha" onclick="abrirModSenha('${x.id}','${nomeSafe}')">${ICONS.key}</button>
+        ${!isMe?`<button class="uz-iact" title="${isAdm?'Tornar usuário':'Promover a admin'}" onclick="Auth.toggleRole('${x.id}')">${isAdm?ICONS.down:ICONS.up}</button>`:''}
+        ${!isMe&&x.status==='active'?`<button class="uz-iact" title="Desativar" onclick="Auth.deactivateUser('${x.id}')">${ICONS.pause}</button>`:''}
+        ${off?`<button class="uz-iact" title="Reativar" onclick="Auth.reactivateUser('${x.id}')">${ICONS.play}</button>`:''}
+        <div style="flex:1"></div>
+        ${!isMe?`<button class="uz-iact dg" title="Excluir" onclick="Auth.deleteUser('${x.id}')">${ICONS.trash}</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
 
-  // ── Pendentes ────────────────────────────────────────────────
-  const pend = u.filter(x=>x.status==='pending');
-  document.getElementById('shdrPendentes').style.display = pend.length ? '' : 'none';
-  document.getElementById('wrapPendentes').style.display = pend.length ? '' : 'none';
-  document.getElementById('tbPendentes').innerHTML = pend.length
-    ? pend.map(x=>`<tr>
-        <td>${x.nome}</td>
-        <td style="font-family:'DM Mono',monospace;font-size:.72rem">${x.email}</td>
-        <td style="font-family:'DM Mono',monospace;font-size:.7rem">${fmtData(x.created_at)}</td>
-        <td ${tdAcao}>
-          <div style="display:inline-flex;gap:5px;align-items:center">
-            ${iBtn(`Auth.approveUser('${x.id}')`, ICO.check, '#10B981', 'Aprovar')}
-            ${iBtn(`Auth.rejectUser('${x.id}')`,  ICO.x,     '#EF4444', 'Rejeitar')}
-            ${iBtn(`Auth.deleteUser('${x.id}')`,  ICO.trash, '#EF4444', 'Excluir permanentemente')}
-          </div>
-        </td>
-      </tr>`).join('')
-    : `<tr><td colspan="4" class="ecel">Nenhuma solicitação pendente.</td></tr>`;
-
-  // ── Ativos ───────────────────────────────────────────────────
-  const ativ = u.filter(x=>x.status==='active');
-  document.getElementById('tbAtivos').innerHTML = ativ.length
-    ? ativ.map(x=>{
-        const isMe = session && session.id === x.id;
-        const isAdm = x.role==='admin';
-        return `<tr>
-          <td>${x.nome}${isMe?` <span style="font-size:.58rem;color:var(--t3)">(você)</span>`:''}</td>
-          <td style="font-family:'DM Mono',monospace;font-size:.72rem">${x.email}</td>
-          <td><span class="sbadge ${isAdm?'role-adm st-active':'role-usr'}" style="${!isAdm?'background:rgba(255,255,255,.07);color:var(--t2)':''}">${isAdm?'ADM':'Usuário'}</span></td>
-          <td style="font-family:'DM Mono',monospace;font-size:.7rem">${fmtData(x.created_at)}</td>
-          <td ${tdAcao}>
-            <div style="display:inline-flex;gap:5px;align-items:center">
-              ${!isMe ? iBtn(`Auth.toggleRole('${x.id}')`, isAdm?ICO.down:ICO.up, 'var(--or1)', isAdm?'Tornar Usuário':'Promover a ADM') : ''}
-              ${iBtn(`abrirModSenha('${x.id}','${x.nome}')`, ICO.key, 'var(--t2)', 'Alterar senha')}
-              ${!isMe ? iBtn(`Auth.deactivateUser('${x.id}')`, ICO.pause, '#F59E0B', 'Desativar acesso') : ''}
-              ${!isMe ? iBtn(`Auth.deleteUser('${x.id}')`,      ICO.trash, '#EF4444', 'Excluir permanentemente') : ''}
-            </div>
-          </td>
-        </tr>`;
-      }).join('')
-    : `<tr><td colspan="5" class="ecel">Nenhum usuário ativo.</td></tr>`;
-
-  // ── Inativos/Rejeitados ──────────────────────────────────────
-  const inat = u.filter(x=>x.status==='inactive'||x.status==='rejected');
-  document.getElementById('tbInativos').innerHTML = inat.length
-    ? inat.map(x=>`<tr>
-        <td>${x.nome}</td>
-        <td style="font-family:'DM Mono',monospace;font-size:.72rem">${x.email}</td>
-        <td><span class="sbadge ${x.status==='rejected'?'st-rejected':'st-inactive'}">${x.status==='rejected'?'Rejeitado':'Inativo'}</span></td>
-        <td style="font-family:'DM Mono',monospace;font-size:.7rem">${fmtData(x.created_at)}</td>
-        <td ${tdAcao}>
-          <div style="display:inline-flex;gap:5px;align-items:center">
-            ${iBtn(`Auth.reactivateUser('${x.id}')`, ICO.play,  '#10B981', 'Reativar acesso')}
-            ${iBtn(`Auth.deleteUser('${x.id}')`,      ICO.trash, '#EF4444', 'Excluir permanentemente')}
-          </div>
-        </td>
-      </tr>`).join('')
-    : `<tr><td colspan="5" class="ecel">Nenhum registro.</td></tr>`;
+/* ── Modal criar / editar usuário ── */
+let _uzDraft = null;
+async function abrirModUser(id){
+  await Promise.all([uzEnsureEmpresas(), uzEnsureModulos()]);
+  const editing = id!=null && id!=='';
+  const u = editing ? _uzUsers.find(x=>String(x.id)===String(id)) : null;
+  if(editing){
+    const grupo = u.grupo || 'Financeiro';
+    const base  = uzPermsPadrao(grupo);                       // nível do grupo (do usuário)
+    const salvo = (u.permissoes && typeof u.permissoes==='object') ? u.permissoes : {};
+    // Só chaves de módulos atuais: módulo novo herda o nível do grupo; descarta chaves obsoletas.
+    const perms = {};
+    UZ_MODULOS.forEach(m=>{ perms[m.chave] = salvo[m.chave] || base[m.chave]; });
+    // Só empresas que existem hoje (descarta vínculos antigos que não batem mais).
+    const empValidas = new Set(UZ_EMPRESAS.map(e=>e.nome));
+    const empresas = new Set((Array.isArray(u.empresas)?u.empresas:[]).filter(e=>empValidas.has(e)));
+    _uzDraft = { id:u.id, grupo, empresas, perms };
+  } else {
+    _uzDraft = { id:null, grupo:'Financeiro', empresas:new Set(), perms:uzPermsPadrao('Financeiro') };
+  }
+  document.getElementById('muTit').textContent = editing ? 'Editar usuário' : 'Novo usuário';
+  document.getElementById('muId').value = editing ? u.id : '';
+  document.getElementById('muNome').value = editing ? (u.nome||'') : '';
+  const mail = document.getElementById('muMail');
+  mail.value = editing ? u.email : ''; mail.disabled = editing;
+  document.getElementById('muSenhaRow').style.display = editing ? 'none' : '';
+  document.getElementById('muSenha').value = '';
+  const err = document.getElementById('muErro'); err.textContent=''; err.style.color='#EF4444';
+  uzRenderGsel(); uzRenderEmps(); uzRenderPtbl();
+  const m = document.getElementById('modUser'); m.style.display='flex'; setTimeout(()=>m.classList.add('op'),10);
+}
+function closeModUser(){ const m=document.getElementById('modUser'); m.classList.remove('op'); setTimeout(()=>m.style.display='none',200); }
+function uzRenderGsel(){
+  document.getElementById('muGsel').innerHTML = UZ_GRUPOS.map(g=>
+    `<div class="uz-gopt ${g.id===_uzDraft.grupo?'on':''}" style="${g.id===_uzDraft.grupo?`background:${g.hex}`:''}" onclick="uzSetGrupo('${g.id.replace(/'/g,"\\'")}')">${g.id}</div>`).join('');
+}
+function uzSetGrupo(g){ _uzDraft.grupo=g; _uzDraft.perms=uzPermsPadrao(g); uzRenderGsel(); uzRenderPtbl(); }
+function uzRenderEmps(){
+  if(!UZ_EMPRESAS.length){
+    document.getElementById('muEmps').innerHTML = '<div style="grid-column:1/-1;color:var(--t3);font-size:.78rem;padding:.5rem">Nenhuma empresa cadastrada ainda. Cadastre contas em "Contas" e elas aparecerão aqui.</div>';
+    document.getElementById('muSelAll').textContent = 'Selecionar todas';
+    return;
+  }
+  const grupos = {};
+  UZ_EMPRESAS.forEach(e=>{ (grupos[e.banco] = grupos[e.banco]||[]).push(e); });
+  let html = '';
+  Object.keys(grupos).sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(banco=>{
+    html += `<div class="uz-emp-hd">${banco}</div>`;
+    html += grupos[banco].map(e=>
+      `<label class="uz-emp"><input type="checkbox" ${_uzDraft.empresas.has(e.nome)?'checked':''} onchange="uzToggleEmp('${e.nome.replace(/'/g,"\\'")}',this.checked)"><span>${e.loja}</span></label>`).join('');
+  });
+  document.getElementById('muEmps').innerHTML = html;
+  document.getElementById('muSelAll').textContent = _uzDraft.empresas.size===UZ_EMPRESAS.length ? 'Limpar seleção' : 'Selecionar todas';
+}
+function uzToggleEmp(e,on){ on?_uzDraft.empresas.add(e):_uzDraft.empresas.delete(e); uzRenderEmps(); }
+function uzToggleAllEmp(){ if(_uzDraft.empresas.size===UZ_EMPRESAS.length)_uzDraft.empresas.clear(); else UZ_EMPRESAS.forEach(e=>_uzDraft.empresas.add(e.nome)); uzRenderEmps(); }
+function uzRenderPtbl(){
+  document.getElementById('muPtbl').innerHTML = UZ_MODULOS.map(m=>{
+    const lv=_uzDraft.perms[m.chave]||'none';
+    return `<div class="uz-prow"><span class="uz-pname">${m.nome}</span>
+      <div class="uz-pgrp">
+        <label class="uz-pchk"><input type="checkbox" ${lv!=='none'?'checked':''} onchange="uzSetPerm('${m.chave.replace(/'/g,"\\'")}','v',this.checked)"></label>
+        <label class="uz-pchk"><input type="checkbox" ${lv==='edit'?'checked':''} onchange="uzSetPerm('${m.chave.replace(/'/g,"\\'")}','e',this.checked)"></label>
+      </div></div>`;
+  }).join('');
+}
+function uzSetPerm(m,which,on){
+  if(which==='v'){ _uzDraft.perms[m] = on ? (_uzDraft.perms[m]==='edit'?'edit':'view') : 'none'; }
+  else { _uzDraft.perms[m] = on ? 'edit' : 'view'; }
+  uzRenderPtbl();
+}
+async function salvarUser(){
+  const nome  = document.getElementById('muNome').value.trim();
+  const email = document.getElementById('muMail').value.trim().toLowerCase();
+  const err   = document.getElementById('muErro'); err.style.color='#EF4444'; err.textContent='';
+  if(!nome){ err.textContent='Informe o nome.'; return; }
+  const cfg = { grupo:_uzDraft.grupo, empresas:[..._uzDraft.empresas], permissoes:_uzDraft.perms };
+  if(_uzDraft.id){
+    const r = await Auth.saveUserConfig(_uzDraft.id, { nome, ...cfg });
+    if(!r.ok){ err.textContent='Erro: '+r.msg; return; }
+    toast('Usuário atualizado!','ok');
+  } else {
+    const senha = document.getElementById('muSenha').value;
+    if(!email.endsWith('@cajupar.com')){ err.textContent='E-mail precisa ser @cajupar.com.'; return; }
+    if(senha.length<6){ err.textContent='Senha: mínimo 6 caracteres.'; return; }
+    err.style.color='var(--or2)'; err.textContent='Criando...';
+    const r = await Auth.createUser({ email, nome, senha, ...cfg });
+    err.style.color='#EF4444';
+    if(!r.ok){ err.textContent='Erro: '+r.msg; return; }
+    toast('Usuário criado!','ok');
+  }
+  closeModUser();
+  renderUsuarios();
+  renderPendingBadge();
 }
 
 function abrirModSenha(id, nome){
@@ -1994,25 +2689,48 @@ async function fetchNotifs(){
       _notifPending = count||0;
     }catch(e){}
   }
+  _notifSolic = [];
+  try{
+    const { data } = await _SB.from('solicitacoes_comprovante')
+      .select('id,empresa_key,empresa_nome,titulo_everest,fornecedor,valor,status,solicitante_id,respondido_at,expira_at,created_at')
+      .order('created_at',{ascending:false}).limit(60);
+    _notifSolic = data||[];
+  }catch(e){ _notifSolic=[]; }
   renderNotifBadge();
   const p=document.getElementById('notifPanel');
   if(p && p.classList.contains('on')) renderNotifPanel();
 }
+let _notifSolic = [];
+/* "Visto" das notificações de comprovante recebido (por usuário) — depois de abrir o
+   sino, a notificação some e não conta mais no badge. */
+function _solicSeenKey(){ return 'cj_solic_recv_seen_' + ((_currentUser && _currentUser.id) || ''); }
+function _solicSeenSet(){ try{ return new Set(JSON.parse(localStorage.getItem(_solicSeenKey())||'[]')); }catch(e){ return new Set(); } }
+function _solicMarkSeen(ids){ if(!ids || !ids.length) return; const s=_solicSeenSet(); ids.forEach(i=>s.add(i)); localStorage.setItem(_solicSeenKey(), JSON.stringify([...s])); }
+function _cmpNotifSplit(){
+  const uid = _currentUser && _currentUser.id, now = new Date(), seen = _solicSeenSet();
+  const pend = [], resp = [];
+  (_notifSolic||[]).forEach(r=>{
+    if(r.status==='pendente' && typeof cmpPodeAtender==='function' && cmpPodeAtender(r.empresa_key)) pend.push(r);
+    if(r.status==='respondido' && r.solicitante_id===uid && (!r.expira_at || new Date(r.expira_at)>now) && !seen.has(r.id)) resp.push(r);
+  });
+  return { pend, resp };
+}
+function _notifIrComprovantes(){ toggleNotif(false); const t=document.querySelector('.tab[data-p="comprovantes"]'); if(t) t.click(); }
 
 function _notifSeen(){ return localStorage.getItem(NOTIF_SEEN_KEY)||''; }
 function _notifDismiss(){ return localStorage.getItem(NOTIF_DISMISS_KEY)||''; }
 function _notifNovasImp(){ const s=_notifSeen(), d=_notifDismiss(), t=s>d?s:d;
   return _notifImports.filter(i=>String(i.data_importacao||'')>t).length; }
 function limparNotifs(){
-  const newest=_notifImports.length?String(_notifImports[0].data_importacao||new Date().toISOString()):new Date().toISOString();
-  localStorage.setItem(NOTIF_DISMISS_KEY,newest);
-  localStorage.setItem(NOTIF_SEEN_KEY,newest);
+  const cs=_cmpNotifSplit();
+  _solicMarkSeen(cs.resp.map(r=>r.id));
   renderNotifPanel();
   renderNotifBadge();
 }
 
 function renderNotifBadge(){
-  const n=_notifPending + _notifNovasImp();
+  const cs=_cmpNotifSplit();
+  const n=_notifPending + cs.pend.length + cs.resp.length;
   const b=document.getElementById('notifBadge');
   if(!b) return;
   if(n>0){ b.textContent=n>99?'99+':String(n); b.style.display=''; }
@@ -2029,22 +2747,22 @@ function renderNotifPanel(){
       <span class="notif-ic"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg></span>
       <span><b>${_notifPending}</b> ${_notifPending===1?'pessoa aguardando aprovação':'pessoas aguardando aprovação'}<br><span class="notif-sub">Clique para revisar em Usuários</span></span></button>`;
   }
-  const dismiss=_notifDismiss();
-  const imps=_notifImports.filter(i=>String(i.data_importacao||'')>dismiss);
+  const cs=_cmpNotifSplit();
+  if(cs.pend.length){
+    html+=`<div class="notif-sec">Comprovantes — a atender</div>`;
+    html+=`<button class="notif-item nova" onclick="_notifIrComprovantes()">
+      <span class="notif-ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+      <span><b>${cs.pend.length}</b> solicitação(ões) de comprovante aguardando<br><span class="notif-sub">Clique para abrir Comprovantes</span></span></button>`;
+  }
+  if(cs.resp.length){
+    html+=`<div class="notif-sec">Comprovantes — recebidos</div>`;
+    html+=cs.resp.slice(0,6).map(r=>`<button class="notif-item" onclick="_notifIrComprovantes()">
+      <span class="notif-ic"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+      <span>Comprovante disponível: <b>${(r.titulo_everest||r.fornecedor||'—')}</b><br><span class="notif-sub">${r.empresa_nome||''}</span></span></button>`).join('');
+  }
   const clearBtn=document.getElementById('notifClear');
-  if(clearBtn) clearBtn.disabled = imps.length===0;
-  html+=`<div class="notif-sec">Importações recentes</div>`;
-  if(imps.length){
-    const seen=_notifSeen();
-    html+=imps.map(i=>{
-      const nova=String(i.data_importacao||'')>seen;
-      let d='';
-      try{ d=i.data_importacao?new Date(i.data_importacao).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''; }catch(e){}
-      return `<div class="notif-item${nova?' nova':''}">
-        <span class="notif-ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
-        <span>${(i.banco||'')} — ${(i.arquivo||'').replace(/</g,'&lt;')}<br><span class="notif-sub">${i.qtd_transacoes||0} lançamentos · ${d}</span></span></div>`;
-    }).join('');
-  } else html+=`<div class="notif-empty">Nenhuma importação nova.</div>`;
+  if(clearBtn) clearBtn.disabled = cs.resp.length===0;
+  if(!html) html=`<div class="notif-empty">Nenhuma notificação.</div>`;
   el.innerHTML=html;
 }
 
@@ -2071,8 +2789,9 @@ function toggleNotif(force){
       }
     }
     p.classList.add('on');
-    // marca importações como vistas
-    if(_notifImports.length) localStorage.setItem(NOTIF_SEEN_KEY, String(_notifImports[0].data_importacao||new Date().toISOString()));
+    // ao abrir (visualizar), marca os comprovantes recebidos como vistos:
+    // eles continuam visíveis neste painel, mas somem do sino da próxima vez.
+    const _cs=_cmpNotifSplit(); _solicMarkSeen(_cs.resp.map(r=>r.id));
     renderNotifBadge();
     setTimeout(()=>document.addEventListener('mousedown',_notifDocDown,true),0);
   } else {
@@ -2591,11 +3310,10 @@ function renderContas(){
       <td style="font-family:'DM Mono',monospace;font-size:.7rem">${c.conta||'—'}</td>
       <td style="font-family:'DM Mono',monospace;font-size:.68rem;color:var(--t3)">${c.cnpj||'—'}</td>
       <td class="r">${cur(c.saldoInicial||0)}</td>
-      <td>
+      <td>${podeEditar('contas') ? `
         <button onclick="editConta(${c.id})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:.8rem;padding:2px 6px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='var(--or1)'" onmouseout="this.style.color='var(--t3)'">✎</button>
         <button onclick="apagarLancamentos(${c.id})" title="Apagar TODOS os lançamentos desta conta (definitivo)" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:.8rem;padding:2px 6px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#EF4444'" onmouseout="this.style.color='var(--t3)'">🗑️</button>
-        <button onclick="delConta(${c.id})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:.8rem;padding:2px 6px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#EF4444'" onmouseout="this.style.color='var(--t3)'">✕</button>
-      </td>
+        <button onclick="delConta(${c.id})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:.8rem;padding:2px 6px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#EF4444'" onmouseout="this.style.color='var(--t3)'">✕</button>` : '<span style="color:var(--t3)">—</span>'}</td>
     </tr>`
   }).join('');
 }
@@ -2938,6 +3656,7 @@ function renderSaldos(){
   const sb=document.getElementById('siBody');
   const inpStyle='background:var(--bg3);border:1px solid var(--bd);border-radius:5px;padding:4px 8px;font-family:"DM Mono",monospace;font-size:.78rem;color:var(--t1);transition:border-color var(--t)';
   const hoje=new Date().toISOString().slice(0,10);
+  const ed=podeEditar('saldos');
   sb.innerHTML=contas.map(c=>`<tr>
     <td title="${c.empresa}">${c.empresa}</td>
     <td><span class="bmarca" style="background:${cor(c.marca)}22;color:${cor(c.marca)}">${c.marca}</span></td>
@@ -2946,13 +3665,13 @@ function renderSaldos(){
       style="width:130px;text-align:right;${inpStyle}"
       onchange="updateSI(${c.id},this.value)"
       onfocus="this.style.borderColor='var(--or1)'" onblur="this.style.borderColor='var(--bd)'"/></td>
-    <td><button onclick="saveSI(${c.id})" class="bp" style="padding:4px 10px;font-size:.68rem">Salvar</button></td>
+    <td>${ed?`<button onclick="saveSI(${c.id})" class="bp" style="padding:4px 10px;font-size:.68rem">Salvar</button>`:'—'}</td>
     <td class="r"><input type="date" id="calDate_${c.id}" class="pdt" value="${hoje}"
       style="width:140px;height:32px"/></td>
     <td class="r"><input type="number" step="0.01" id="calVal_${c.id}" placeholder="R$ saldo"
       style="width:120px;text-align:right;${inpStyle}"
       onfocus="this.style.borderColor='var(--or1)'" onblur="this.style.borderColor='var(--bd)'"/></td>
-    <td><button onclick="calibrarSI(${c.id})" class="bp" style="padding:4px 10px;font-size:.68rem;background:var(--or1)">⚡ Calibrar</button></td>
+    <td>${ed?`<button onclick="calibrarSI(${c.id})" class="bp" style="padding:4px 10px;font-size:.68rem;background:var(--or1)">⚡ Calibrar</button>`:''}</td>
   </tr>`).join('');
   if(window._calInit) window._calInit();
 }
@@ -3767,20 +4486,615 @@ const pageRenders={
   saldos:renderSaldos,
   importar:renderHist,
   emprestimos:renderEmprestimos,
-  usuarios:renderUsuarios
+  usuarios:renderUsuarios,
+  comprovantes:cmpOpen
 };
+
+/* ═══════════════════════════════════════════════════════════════════════
+   COMPROVANTES — módulo nativo (Santander + Itaú)
+   Consome o proxy local (unified_app.py) em http://localhost:3000, que faz
+   o OAuth + mTLS dos dois bancos e devolve os comprovantes já normalizados.
+   ═══════════════════════════════════════════════════════════════════════ */
+let cmpProxyUrl = (function(){ try{ return localStorage.getItem('cmp_proxy') || 'http://localhost:3000'; }catch(e){ return 'http://localhost:3000'; } })();
+const CMP_CATS = {
+  'PIX':                   {l:'PIX',             i:'⚡', c:'#10B981'},
+  'TED':                   {l:'TED',             i:'↗',  c:'#3B82F6'},
+  'DOC':                   {l:'DOC',             i:'↘',  c:'#8B5CF6'},
+  'BOLETOS':               {l:'Boletos',         i:'🧾', c:'#F5853A'},
+  'TRIBUTOS':              {l:'Tributos',        i:'🏛', c:'#EF4444'},
+  'CONCESSIONARIAS':       {l:'Concessionárias', i:'💡', c:'#06B6D4'},
+  'DEBITO-AUTOMATICO':     {l:'Déb. Automático', i:'🔁', c:'#EC4899'},
+  'TRANSFERENCIAS-OUTRAS': {l:'Transf. Outras',  i:'⇄',  c:'#9A9990'}
+};
+let cmpData = [], cmpContas = [], cmpDrive = {}, cmpCat = '', cmpStarted = false, cmpEditingKey = '';
+const cmpBase = () => (cmpProxyUrl || 'http://localhost:3000').replace(/\/+$/,'');
+function cmpFmt(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function cmpDocFmt(d){
+  if(!d) return '—';
+  d = String(d).replace(/\D/g,'');
+  if(d.length===14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
+  if(d.length===11) return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/,'$1.$2.$3-$4');
+  return d;
+}
+function cmpBankColor(b){ return b==='itau' ? '#EC7000' : '#EF4444'; }
+function cmpBankLabel(b){ return b==='itau' ? 'Itaú' : 'Santander'; }
+function cmpContaByKey(k){ return cmpContas.find(c=>c.key===k) || null; }
+
+/* Restrição por empresa: usuário não-admin só vê as empresas às quais tem acesso —
+   o mesmo controle do resto do dashboard (_currentUser.empresas guarda chaves "Loja - Banco").
+   Ligamos a conta do comprovante à empresa pelo CNPJ (via contas do dashboard) e, como
+   reforço, pelo nome + banco. Admin vê tudo. */
+function cmpAllowedFilter(){
+  if(!_currentUser || _currentUser.role==='admin' || !Array.isArray(_currentUser.empresas)) return null;
+  const allowKeys = new Set(_currentUser.empresas);
+  const allowCnpj = new Set();
+  (typeof _contas !== 'undefined' && Array.isArray(_contas) ? _contas : []).forEach(c=>{
+    if(allowKeys.has(contaKey(c))){ const d = String(c.cnpj||'').replace(/\D/g,''); if(d) allowCnpj.add(d); }
+  });
+  return { allowKeys, allowCnpj };
+}
+function cmpContaPermitida(c){
+  const f = cmpAllowedFilter();
+  if(!f) return true;
+  const d = String(c.cnpj||'').replace(/\D/g,'');
+  if(d && f.allowCnpj.has(d)) return true;
+  return f.allowKeys.has((c.nome||'') + ' - ' + cmpBankLabel(c.bank));
+}
+
+async function cmpLoadContas(){
+  try{
+    const r = await fetch(cmpBase()+'/admin/contas');
+    if(r.ok){ const j = await r.json(); cmpContas = (j.contas || []).filter(cmpContaPermitida); }
+  }catch(e){ /* proxy offline */ }
+  const sel = document.getElementById('cmpConta'); if(!sel) return;
+  const cur = sel.value;
+  const opts = cmpContas.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+  sel.innerHTML = '<option value="">Todas as contas</option>' +
+    opts.map(c=>`<option value="${c.key}">${c.nome} · ${cmpBankLabel(c.bank)}</option>`).join('');
+  if(opts.some(c=>c.key===cur)) sel.value = cur;
+}
+async function cmpLoadManifest(){
+  cmpDrive = {};
+  try{
+    const r = await fetch(cmpBase()+'/comprovantes.json');
+    if(r.ok){ const j = await r.json(); (j.receipts||[]).forEach(x=>{ if(x.paymentId&&x.driveLink) cmpDrive[x.paymentId]=x.driveLink; }); }
+  }catch(e){}
+}
+async function cmpLoad(){
+  const de = document.getElementById('cmpDe').value, ate = document.getElementById('cmpAte').value;
+  if(!de || !ate){ toast('Informe as datas de início e fim.','er'); return; }
+  const diff = (new Date(ate) - new Date(de))/86400000;
+  if(diff < 0){ toast('A data inicial não pode ser maior que a final.','er'); return; }
+  if(diff > 30){ toast('Intervalo máximo é de 30 dias (regra Santander).','er'); return; }
+  const body = document.getElementById('cmpBody');
+  body.innerHTML = '<tr class="skr"><td colspan="9"></td></tr>'.repeat(3);
+  document.getElementById('cmpStatus').textContent = 'Consultando…';
+  try{
+    await cmpLoadContas();
+    const u = new URL(cmpBase()+'/api/comprovantes');
+    u.searchParams.set('start', de);
+    u.searchParams.set('end', ate);
+    const loja = document.getElementById('cmpConta').value;
+    if(loja) u.searchParams.set('conta', loja);
+    const r = await fetch(u);
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
+    cmpData = j.receipts || [];
+    await cmpLoadManifest();
+    document.getElementById('cmpStatus').textContent = cmpData.length + ' comprovante(s)';
+    if(j.erros && j.erros.length){ toast(j.erros.length+' conta(s) com erro — veja o console.','er'); console.warn('Comprovantes — erros:', j.erros); }
+  }catch(e){
+    cmpData = [];
+    document.getElementById('cmpStatus').textContent = '';
+    toast('Falha na consulta. O proxy (Iniciar Proxy.bat) está rodando? ' + e.message, 'er');
+  }
+  cmpRender();
+}
+function cmpFilter(list){
+  const loja = document.getElementById('cmpConta').value;
+  const q = (document.getElementById('cmpSearch').value||'').trim().toLowerCase();
+  const qNum = q.replace(/[^\d,.]/g,'').replace(/\./g,'').replace(',','.');
+  const restrito = cmpAllowedFilter();
+  const allowedKeys = restrito ? new Set(cmpContas.map(c=>c.key)) : null;
+  return list.filter(r=>{
+    if(allowedKeys && !allowedKeys.has(r.contaKey)) return false;
+    if(loja && r.contaKey !== loja) return false;
+    if(!q) return true;
+    const val = (Number(r.amount)||0).toFixed(2);
+    return (r.payee||'').toLowerCase().includes(q)
+        || (r.paymentId||'').toLowerCase().includes(q)
+        || (qNum && val.includes(qNum));
+  });
+}
+function cmpRender(){
+  const base = cmpFilter(cmpData);
+  cmpRenderCats(base);
+  cmpRenderTable(base.filter(r=>!cmpCat || r.category===cmpCat));
+}
+function cmpRenderCats(list){
+  const tot = {}; Object.keys(CMP_CATS).forEach(c=>tot[c]={n:0,s:0});
+  list.forEach(r=>{ if(tot[r.category]){ tot[r.category].n++; tot[r.category].s += Number(r.amount)||0; } });
+  const max = Math.max(1, ...Object.values(tot).map(t=>t.s));
+  document.getElementById('cmpCats').innerHTML = Object.entries(CMP_CATS).map(([code,c])=>{
+    const t = tot[code], pct = Math.round(t.s/max*100), on = cmpCat===code ? 'active' : '';
+    return `<div class="mcard ${on}" data-cat="${code}" style="--mc:${c.c}">
+      <div class="mtag">${c.i} ${c.l}</div>
+      <div class="mval">${cmpFmt(t.s)}</div>
+      <div class="mcts">${t.n} comprovante(s)</div>
+      <div class="mbar"><div class="mbf" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('#cmpCats .mcard').forEach(el=>el.onclick=()=>{
+    cmpCat = cmpCat===el.dataset.cat ? '' : el.dataset.cat;
+    document.getElementById('cmpCatLbl').textContent = cmpCat ? ('● '+CMP_CATS[cmpCat].l) : '';
+    cmpRender();
+  });
+}
+function cmpRenderTable(rows){
+  document.getElementById('cmpCount').textContent = rows.length + ' registro(s)';
+  const body = document.getElementById('cmpBody');
+  if(!rows.length){ body.innerHTML = '<tr><td colspan="9" class="ecel">Nenhum comprovante para o período/filtro selecionado.</td></tr>'; return; }
+  body.innerHTML = rows.map(r=>{
+    const c = CMP_CATS[r.category] || {l:r.category, i:'•', c:'#9A9990'};
+    const dt = new Date(r.datetime);
+    const conta = cmpContaByKey(r.contaKey) || {};
+    const bc = cmpBankColor(r.bank), col = r.color || bc;
+    const drive = cmpDrive[r.paymentId];
+    const dd = isNaN(dt) ? '—' : dt.toLocaleDateString('pt-BR');
+    const hh = isNaN(dt) ? '' : dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    return `<tr>
+      <td>${dd}<span class="cmp-sub">${hh}</span></td>
+      <td><span class="cmp-cat" style="background:${c.c}22;color:${c.c}">${c.i} ${c.l}</span></td>
+      <td title="${(r.payee||'').replace(/"/g,'&quot;')}">${r.payee||'—'}</td>
+      <td><span class="cmp-sub">${cmpDocFmt(r.payerDoc)}</span></td>
+      <td><span class="cmp-bank" style="background:${bc}22;color:${bc}">${cmpBankLabel(r.bank)}</span><span class="cmp-brand" style="color:${col}">${r.brand||conta.nome||''}</span></td>
+      <td><span class="cmp-sub">${(conta.agency||'—')+' / '+(conta.account||'—')}</span></td>
+      <td><span class="cmp-sub">${r.channel||'—'}</span></td>
+      <td class="r">${cmpFmt(r.amount)}</td>
+      <td><button class="cmp-dl" data-id="${r.paymentId}" data-bank="${r.bank||''}" data-conta="${r.contaKey||''}" data-date="${(r.datetime||'').slice(0,10)}" data-month="${(r.datetime||'').slice(0,7)}">${drive?'☁ PDF':'⬇ PDF'}</button></td>
+    </tr>`;
+  }).join('');
+  document.querySelectorAll('#cmpBody .cmp-dl').forEach(b=>b.onclick=()=>cmpDownload(b));
+}
+async function cmpDownload(btn){
+  const d = btn.dataset;
+  if(cmpDrive[d.id]){ window.open(cmpDrive[d.id],'_blank'); return; }
+  if(d.bank==='itau'){
+    const u = new URL(cmpBase()+'/api/itau-pdf');
+    u.searchParams.set('conta', d.conta); u.searchParams.set('id', d.id); u.searchParams.set('date', d.date);
+    window.open(u.toString(),'_blank'); return;
+  }
+  const old = btn.textContent; btn.textContent = '…'; btn.disabled = true;
+  try{
+    const url = await cmpSantanderPDF(d.id, d.month, d.conta);
+    window.open(url,'_blank');
+  }catch(e){ toast('PDF oficial indisponível: '+e.message, 'er'); }
+  finally{ btn.textContent = old; btn.disabled = false; }
+}
+async function cmpSantanderPDF(paymentId, refMonth, contaKey){
+  const base = cmpBase()+'/consult_payment_receipts/v2/payment_receipts/'+encodeURIComponent(paymentId)+'/file_requests';
+  const H = extra => { const h = {'Accept':'application/json', ...(extra||{})}; if(contaKey) h['X-Conta-Key']=contaKey; return h; };
+  let post = null;
+  for(let a=0;a<4;a++){
+    post = await fetch(base,{method:'POST',headers:H({'Content-Type':'application/json'}),body:JSON.stringify({payment:{requestValueDate:refMonth}})});
+    if(post.ok) break;
+    if([429,500,502,503,504].includes(post.status)){ await new Promise(r=>setTimeout(r,2000)); continue; }
+    throw new Error('POST HTTP '+post.status);
+  }
+  if(!post || !post.ok) throw new Error('serviço do Santander indisponível');
+  const created = await post.json();
+  const reqId = created.request && created.request.requestId;
+  for(let i=0;i<10;i++){
+    await new Promise(r=>setTimeout(r,1800));
+    const g = await fetch(base+'/'+encodeURIComponent(reqId), {headers:H()});
+    if(!g.ok) continue;
+    const t = await g.text(); const j = t ? JSON.parse(t) : {};
+    if(j.file && j.file.statusInfo && j.file.statusInfo.statusCode==='AVAILABLE' && j.file.fileRepository && j.file.fileRepository.location)
+      return j.file.fileRepository.location;
+  }
+  throw new Error('arquivo ainda em processamento — tente novamente');
+}
+function cmpDefaultDates(){
+  const iso = d => d.toISOString().slice(0,10);
+  const end = new Date(), start = new Date(); start.setDate(end.getDate()-29);
+  const de = document.getElementById('cmpDe'), ate = document.getElementById('cmpAte');
+  if(de && !de.value) de.value = iso(start);
+  if(ate && !ate.value) ate.value = iso(end);
+}
+/* ── Conexão / status ── */
+async function cmpCheckConn(){
+  const b = document.getElementById('cmpConn'), t = document.getElementById('cmpConnTxt');
+  if(!b) return;
+  try{
+    const r = await fetch(cmpBase()+'/health', {cache:'no-store'});
+    if(!r.ok) throw 0;
+    const j = await r.json();
+    b.className = 'cmp-badge on';
+    t.textContent = 'API conectada' + (j && typeof j.contas==='number' ? (' · '+j.contas+' conta(s)') : '');
+  }catch(e){
+    b.className = 'cmp-badge off';
+    t.textContent = 'Proxy offline';
+  }
+}
+
+/* Só quem pode EDITAR o módulo (ou admin) acessa a aba Contas. */
+function cmpCanEdit(){ return (typeof podeEditar==='function') ? podeEditar('comprovantes') : true; }
+
+/* ── Troca de sub-view (Comprovantes / Contas) ── */
+function cmpShowView(v){
+  if(v==='contas' && !cmpCanEdit()) v='comprovantes';   // visualizador não entra em Contas
+  document.querySelectorAll('#page-comprovantes .cmp-tab').forEach(t=>t.classList.toggle('on', t.dataset.view===v));
+  document.getElementById('cmpViewComprovantes').style.display = v==='comprovantes' ? '' : 'none';
+  document.getElementById('cmpViewContas').style.display = v==='contas' ? '' : 'none';
+  if(v==='contas') cmpLoadContas().then(cmpRenderContas);
+}
+
+/* ── Modal de configuração (URL do proxy) ── */
+function cmpOpenCfg(){ document.getElementById('cmpCfgUrl').value = cmpProxyUrl; document.getElementById('cmpModCfg').classList.add('op'); }
+function cmpCloseCfg(){ document.getElementById('cmpModCfg').classList.remove('op'); }
+function cmpSaveCfg(){
+  const v = document.getElementById('cmpCfgUrl').value.trim() || 'http://localhost:3000';
+  cmpProxyUrl = v;
+  try{ localStorage.setItem('cmp_proxy', v); }catch(e){}
+  cmpCloseCfg(); cmpCheckConn(); cmpLoadContas().then(cmpRenderContas);
+  toast('Conexão salva.','ok');
+}
+
+/* ── Tabela de contas cadastradas ── */
+function cmpCertLabel(c){ return c.certConfigured ? '<span style="color:#10B981;font-weight:700">✓ enviado</span>' : '<span style="color:#EF4444;font-weight:700">sem certificado</span>'; }
+function cmpRenderContas(){
+  const body = document.getElementById('cmpContasBody'); if(!body) return;
+  if(!cmpContas.length){ body.innerHTML = '<tr><td colspan="7" class="ecel">Nenhuma conta cadastrada. Use “+ Nova conta” ou “Importar Itaú”.</td></tr>'; return; }
+  body.innerHTML = cmpContas.map(c=>{
+    const bc = cmpBankColor(c.bank);
+    return `<tr>
+      <td><span class="cmp-brand" style="color:${c.color||bc}">${c.nome||'—'}</span></td>
+      <td><span class="cmp-bank" style="background:${bc}22;color:${bc}">${cmpBankLabel(c.bank)}</span></td>
+      <td><span class="cmp-sub">${c.agency||'—'}</span></td>
+      <td><span class="cmp-sub">${(c.account||'—')+(c.dac?('-'+c.dac):'')}</span></td>
+      <td><span class="cmp-sub">${c.cnpj?cmpDocFmt(c.cnpj):'—'}</span></td>
+      <td><span class="cmp-sub">${cmpCertLabel(c)}</span></td>
+      <td><button class="cmp-dl" data-key="${c.key}">✎ Editar</button></td>
+    </tr>`;
+  }).join('');
+  body.querySelectorAll('.cmp-dl').forEach(b=>b.onclick=()=>cmpOpenConta(b.dataset.key));
+}
+
+/* ── Modal de conta (criar/editar) ── */
+function cmpSetBank(bank){
+  document.getElementById('cmpModConta').setAttribute('data-bank', bank);
+  document.getElementById('cmpMcAppKeyLbl').textContent = bank==='itau'
+    ? 'apikey (Itaú; vazio usa o Client ID)'
+    : 'X-Application-Key (Santander; vazio usa o Client ID)';
+}
+function cmpOpenConta(key){
+  const c = key ? cmpContas.find(x=>x.key===key) : null;
+  cmpEditingKey = c ? c.key : '';
+  document.getElementById('cmpMcTitle').textContent = c ? 'Editar conta' : 'Nova conta';
+  const bank = (c && c.bank) || 'santander';
+  document.getElementById('cmpMcBank').value = bank;
+  document.getElementById('cmpMcNome').value = c ? (c.nome||'') : '';
+  document.getElementById('cmpMcCnpj').value = c ? (c.cnpj||'') : '';
+  document.getElementById('cmpMcAg').value = c ? (c.agency||'') : '';
+  document.getElementById('cmpMcAcc').value = c ? (c.account||'') : '';
+  document.getElementById('cmpMcDac').value = c ? (c.dac||'') : '';
+  document.getElementById('cmpMcColor').value = c ? (c.color||'#E8430A') : '#E8430A';
+  document.getElementById('cmpMcKeyIn').value = c ? (c.key||'') : '';
+  ['cmpMcClientId','cmpMcClientSecret','cmpMcAppKey','cmpMcPfxPass'].forEach(i=>document.getElementById(i).value='');
+  ['cmpMcPfx','cmpMcCrt','cmpMcKeyFile'].forEach(i=>{ const el=document.getElementById(i); if(el) el.value=''; });
+  document.getElementById('cmpMcCertState').textContent = c
+    ? (c.certConfigured ? 'Certificado já enviado ✓ — anexe de novo só para trocar.' : '⚠ Sem certificado — anexe abaixo.')
+    : 'Anexe o certificado abaixo.';
+  document.getElementById('cmpMcDelete').style.display = c ? '' : 'none';
+  cmpSetBank(bank);
+  document.getElementById('cmpModConta').classList.add('op');
+}
+function cmpCloseConta(){ document.getElementById('cmpModConta').classList.remove('op'); }
+async function cmpSaveConta(){
+  const bank = document.getElementById('cmpMcBank').value;
+  const nome = document.getElementById('cmpMcNome').value.trim();
+  const cnpj = document.getElementById('cmpMcCnpj').value.replace(/\D/g,'');
+  if(!nome){ toast('Informe o nome / empresa.','er'); return; }
+  if(cnpj && cnpj.length!==14){ toast('CNPJ deve ter 14 dígitos.','er'); return; }
+  const fd = new FormData();
+  fd.append('bank', bank);
+  fd.append('nome', nome);
+  fd.append('cnpj', cnpj);
+  fd.append('agency', document.getElementById('cmpMcAg').value.trim());
+  fd.append('account', document.getElementById('cmpMcAcc').value.trim());
+  fd.append('dac', document.getElementById('cmpMcDac').value.trim());
+  fd.append('color', document.getElementById('cmpMcColor').value);
+  const keyIn = document.getElementById('cmpMcKeyIn').value.trim();
+  if(keyIn) fd.append('key', keyIn); else if(cmpEditingKey) fd.append('key', cmpEditingKey);
+  const cid = document.getElementById('cmpMcClientId').value.trim(); if(cid) fd.append('client_id', cid);
+  const cs = document.getElementById('cmpMcClientSecret').value; if(cs) fd.append('client_secret', cs);
+  const ak = document.getElementById('cmpMcAppKey').value.trim(); if(ak) fd.append('app_key', ak);
+  if(bank==='santander'){
+    const pfx = document.getElementById('cmpMcPfx').files[0]; if(pfx) fd.append('pfx', pfx);
+    const pp = document.getElementById('cmpMcPfxPass').value; if(pp) fd.append('cert_pfx_password', pp);
+  }else{
+    const crt = document.getElementById('cmpMcCrt').files[0]; if(crt) fd.append('crt', crt);
+    const kf = document.getElementById('cmpMcKeyFile').files[0]; if(kf) fd.append('keyfile', kf);
+  }
+  try{
+    const r = await fetch(cmpBase()+'/admin/contas', {method:'POST', body:fd});
+    const j = await r.json();
+    if(!r.ok || !j.ok) throw new Error(j.erro || ('HTTP '+r.status));
+    cmpCloseConta(); await cmpLoadContas(); cmpRenderContas(); cmpCheckConn();
+    toast('Conta salva no proxy.','ok');
+  }catch(e){ toast('Erro ao salvar: '+e.message,'er'); }
+}
+async function cmpDeleteConta(){
+  if(!cmpEditingKey){ cmpCloseConta(); return; }
+  if(!confirm('Remover esta conta do proxy?')) return;
+  try{
+    const r = await fetch(cmpBase()+'/admin/contas/'+encodeURIComponent(cmpEditingKey), {method:'DELETE'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    cmpCloseConta(); await cmpLoadContas(); cmpRenderContas(); cmpCheckConn();
+    toast('Conta removida.','ok');
+  }catch(e){ toast('Falha ao remover: '+e.message,'er'); }
+}
+async function cmpImportItau(){
+  toast('Importando empresas do Itaú...');
+  try{
+    const r = await fetch(cmpBase()+'/admin/importar-itau', {method:'POST'});
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.erro || 'falhou');
+    await cmpLoadContas(); cmpRenderContas(); cmpCheckConn();
+    toast((j.importadas||0)+' empresa(s) importada(s) (de '+(j.total||0)+').','ok');
+  }catch(e){ toast('Erro ao importar: '+e.message,'er'); }
+}
+
+/* ═══════════ SOLICITAÇÕES DE COMPROVANTE ═══════════ */
+const CMP_BUCKET = 'comprovantes-solic';
+let cmpSolic = [], cmpRespId = null;
+function cmpParseValor(s){ s = String(s||'').trim().replace(/[^\d,.-]/g,''); if(s.includes(',')) s = s.replace(/\./g,'').replace(',','.'); return parseFloat(s)||0; }
+/* Empresas que o usuário pode escolher ao solicitar = empresas do dashboard a que tem acesso. */
+function cmpEmpresasDoUsuario(){
+  const arr = (typeof getContas==='function') ? getContas() : ((typeof _contas!=='undefined' && _contas) || []);
+  const seen = {}, out = [];
+  arr.forEach(c=>{ const k = contaKey(c); if(k && !seen[k]){ seen[k]=1; out.push({ key:k, cnpj:String(c.cnpj||'').replace(/\D/g,'') }); } });
+  return out.sort((a,b)=>a.key.localeCompare(b.key,'pt-BR'));
+}
+/* Só Financeiro com acesso à empresa (ou admin) pode atender. */
+function cmpPodeAtender(empresaKey){
+  if(!_currentUser) return false;
+  if(_currentUser.role==='admin') return true;
+  return _currentUser.grupo==='Financeiro' && Array.isArray(_currentUser.empresas) && _currentUser.empresas.includes(empresaKey);
+}
+function cmpSolicExpirada(r){ return r.status==='respondido' && r.expira_at && (new Date(r.expira_at) < new Date()); }
+function cmpSolicStatus(r){
+  if(cmpSolicExpirada(r)) return '<span class="cmp-st" style="background:#9A999022;color:#9A9990">Expirada</span>';
+  if(r.status==='pendente')   return '<span class="cmp-st" style="background:#F5853A22;color:#F5853A">Pendente</span>';
+  if(r.status==='respondido') return '<span class="cmp-st" style="background:#10B98122;color:#10B981">Respondida</span>';
+  return '<span class="cmp-st" style="background:#9A999022;color:#9A9990">'+(r.status||'—')+'</span>';
+}
+async function cmpLoadSolic(){
+  try{
+    const { data, error } = await _SB.from('solicitacoes_comprovante').select('*').order('created_at',{ascending:false}).limit(300);
+    if(error) throw error;
+    cmpSolic = data || [];
+  }catch(e){ cmpSolic = []; }
+  cmpRenderSolic();
+}
+function cmpRenderSolic(){
+  const body = document.getElementById('cmpSolicBody'); if(!body) return;
+  if(!cmpSolic.length){ body.innerHTML = '<tr><td colspan="8" class="ecel">Nenhuma solicitação registrada.</td></tr>'; return; }
+  body.innerHTML = cmpSolic.map(r=>{
+    const dt = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR') : '—';
+    const dtliq = r.data_liquidacao ? new Date(r.data_liquidacao+'T00:00:00').toLocaleDateString('pt-BR') : '—';
+    let acao = '<span class="cmp-sub">—</span>';
+    if(cmpSolicExpirada(r)) acao = '<span class="cmp-sub">expirado</span>';
+    else if(r.status==='pendente' && cmpPodeAtender(r.empresa_key)) acao = `<button class="cmp-dl" data-resp="${r.id}">Responder</button>`;
+    else if(r.status==='pendente') acao = '<span class="cmp-sub">aguardando</span>';
+    else if(r.status==='respondido') acao = `<button class="cmp-dl" data-baixar="${r.id}">⬇ Comprovante</button>`;
+    return `<tr>
+      <td>${dt}<span class="cmp-sub">${((r.solicitante_nome||'').split(' ')[0])||''}</span></td>
+      <td><span class="cmp-sub">${r.empresa_nome||r.empresa_key||'—'}</span></td>
+      <td>${r.titulo_everest||'—'}</td>
+      <td title="${(r.fornecedor||'').replace(/"/g,'&quot;')}">${r.fornecedor||'—'}</td>
+      <td class="r">${cmpFmt(r.valor)}</td>
+      <td><span class="cmp-sub">${dtliq}</span></td>
+      <td>${cmpSolicStatus(r)}</td>
+      <td>${acao}</td>
+    </tr>`;
+  }).join('');
+  body.querySelectorAll('[data-resp]').forEach(b=>b.onclick=()=>cmpOpenResp(b.dataset.resp));
+  body.querySelectorAll('[data-baixar]').forEach(b=>b.onclick=()=>cmpBaixarResp(b.dataset.baixar));
+}
+function cmpOpenSolic(){
+  const sel = document.getElementById('cmpSolicEmpresa');
+  const emp = cmpEmpresasDoUsuario();
+  sel.innerHTML = emp.length
+    ? emp.map(e=>`<option value="${e.key}" data-cnpj="${e.cnpj}">${e.key}</option>`).join('')
+    : '<option value="">(nenhuma empresa liberada para você)</option>';
+  document.getElementById('cmpSolicTitulo').value = '';
+  document.getElementById('cmpSolicData').value = '';
+  document.getElementById('cmpSolicForn').value = '';
+  document.getElementById('cmpSolicValor').value = '';
+  document.getElementById('cmpModSolic').classList.add('op');
+  if(window._calInit) window._calInit();
+}
+function cmpCloseSolic(){ document.getElementById('cmpModSolic').classList.remove('op'); }
+async function cmpSendSolic(){
+  const sel = document.getElementById('cmpSolicEmpresa');
+  const empKey = sel.value;
+  if(!empKey){ toast('Selecione a empresa.','er'); return; }
+  const opt = sel.options[sel.selectedIndex];
+  const titulo = document.getElementById('cmpSolicTitulo').value.trim();
+  const fornecedor = document.getElementById('cmpSolicForn').value.trim();
+  const dataliq = document.getElementById('cmpSolicData').value || null;
+  const valor = cmpParseValor(document.getElementById('cmpSolicValor').value);
+  if(!titulo && !fornecedor){ toast('Informe ao menos o nº do título ou o fornecedor.','er'); return; }
+  const row = {
+    solicitante_id: _currentUser.id,
+    solicitante_nome: _currentUser.nome || '',
+    solicitante_email: _currentUser.email || '',
+    empresa_key: empKey,
+    empresa_nome: empKey,
+    cnpj: opt ? (opt.dataset.cnpj||'') : '',
+    titulo_everest: titulo,
+    data_liquidacao: dataliq,
+    fornecedor: fornecedor,
+    valor: valor,
+    status: 'pendente'
+  };
+  try{
+    const { data, error } = await _SB.from('solicitacoes_comprovante').insert(row).select().single();
+    if(error) throw error;
+    cmpCloseSolic();
+    toast('Solicitação enviada. Prazo de resposta: até 72h.','ok');
+    cmpLoadSolic();
+    if(typeof fetchNotifs==='function') fetchNotifs();
+    cmpNotifyEmail('nova', data);
+  }catch(e){ toast('Erro ao enviar: '+(e.message||e),'er'); }
+}
+function cmpOpenResp(id){
+  cmpRespId = id;
+  const r = cmpSolic.find(x=>String(x.id)===String(id));
+  document.getElementById('cmpRespInfo').innerHTML = r
+    ? `Título <b>${r.titulo_everest||'—'}</b> · ${r.fornecedor||''} · <b>${cmpFmt(r.valor)}</b><br><span class="cmp-sub">${r.empresa_nome||''} · solicitado por ${r.solicitante_nome||''}</span>`
+    : '';
+  document.getElementById('cmpRespFile').value = '';
+  document.getElementById('cmpRespObs').value = '';
+  document.getElementById('cmpModResp').classList.add('op');
+}
+function cmpCloseResp(){ document.getElementById('cmpModResp').classList.remove('op'); }
+async function cmpSendResp(){
+  const f = document.getElementById('cmpRespFile').files[0];
+  if(!f){ toast('Anexe o comprovante.','er'); return; }
+  const r = cmpSolic.find(x=>String(x.id)===String(cmpRespId));
+  if(!r) return;
+  const btn = document.getElementById('cmpRespSend'); const old = btn.textContent; btn.textContent = 'Enviando…'; btn.disabled = true;
+  try{
+    const ext = (f.name.split('.').pop()||'bin').toLowerCase();
+    const path = `${r.id}/comprovante_${Date.now()}.${ext}`;
+    const up = await _SB.storage.from(CMP_BUCKET).upload(path, f, { upsert:true, contentType: f.type||undefined });
+    if(up.error) throw up.error;
+    const agora = new Date();
+    const expira = new Date(agora.getTime() + 5*86400000);
+    const { data, error } = await _SB.from('solicitacoes_comprovante').update({
+      status:'respondido', resposta_path:path,
+      respondido_por:_currentUser.id, respondido_por_nome:_currentUser.nome||'',
+      respondido_at:agora.toISOString(), expira_at:expira.toISOString(),
+      obs: document.getElementById('cmpRespObs').value.trim()
+    }).eq('id', r.id).select().single();
+    if(error) throw error;
+    cmpCloseResp();
+    toast('Comprovante enviado. Disponível por 5 dias.','ok');
+    cmpLoadSolic();
+    if(typeof fetchNotifs==='function') fetchNotifs();
+    cmpNotifyEmail('resposta', data);
+  }catch(e){ toast('Erro ao enviar: '+(e.message||e),'er'); }
+  finally{ btn.textContent = old; btn.disabled = false; }
+}
+async function cmpBaixarResp(id){
+  const r = cmpSolic.find(x=>String(x.id)===String(id));
+  if(!r || !r.resposta_path) return;
+  if(cmpSolicExpirada(r)){ toast('Este comprovante expirou (5 dias).','er'); return; }
+  try{
+    const restante = Math.max(60, Math.floor((new Date(r.expira_at) - new Date())/1000));
+    const { data, error } = await _SB.storage.from(CMP_BUCKET).createSignedUrl(r.resposta_path, restante);
+    if(error) throw error;
+    window.open(data.signedUrl, '_blank');
+  }catch(e){ toast('Falha ao abrir o comprovante: '+(e.message||e),'er'); }
+}
+/* E-mail (opcional): dispara a edge function; se não houver provedor configurado, ignora. */
+async function cmpNotifyEmail(tipo, row){
+  try{ if(_SB.functions && row) await _SB.functions.invoke('notificar-comprovante', { body:{ tipo, id: row.id } }); }catch(e){ /* e-mail é opcional */ }
+}
+
+function cmpOpen(){
+  if(cmpStarted){ cmpCheckConn(); cmpLoadSolic(); return; }
+  cmpStarted = true;
+  cmpDefaultDates();
+  if(window._calInit) window._calInit();
+  // filtros / consulta
+  const btn = document.getElementById('cmpConsult'); if(btn) btn.onclick = cmpLoad;
+  const sel = document.getElementById('cmpConta'); if(sel) sel.onchange = cmpLoad;
+  const src = document.getElementById('cmpSearch'); if(src) src.oninput = cmpRender;
+  // sub-nav
+  document.querySelectorAll('#page-comprovantes .cmp-tab').forEach(t=>t.onclick=()=>cmpShowView(t.dataset.view));
+  // Visualizador: oculta todo o cabeçalho (abas, status de conexão e engrenagem);
+  // fica apenas a consulta de comprovantes. Só quem edita/admin vê Contas e config.
+  if(!cmpCanEdit()){
+    const hdr = document.querySelector('#page-comprovantes .cpage-hdr');
+    if(hdr) hdr.style.display = 'none';
+    cmpShowView('comprovantes');
+  }
+  // engrenagem + modal de config
+  document.getElementById('cmpCfgBtn').onclick = cmpOpenCfg;
+  document.getElementById('cmpCfgClose').onclick = cmpCloseCfg;
+  document.getElementById('cmpCfgCancel').onclick = cmpCloseCfg;
+  document.getElementById('cmpCfgSave').onclick = cmpSaveCfg;
+  document.getElementById('cmpModCfg').onclick = e=>{ if(e.target.id==='cmpModCfg') cmpCloseCfg(); };
+  // aba Contas
+  document.getElementById('cmpNovaConta').onclick = ()=>cmpOpenConta('');
+  // modal de conta
+  document.getElementById('cmpMcBank').onchange = ()=>cmpSetBank(document.getElementById('cmpMcBank').value);
+  document.getElementById('cmpMcClose').onclick = cmpCloseConta;
+  document.getElementById('cmpMcCancel').onclick = cmpCloseConta;
+  document.getElementById('cmpMcSave').onclick = cmpSaveConta;
+  document.getElementById('cmpMcDelete').onclick = cmpDeleteConta;
+  document.getElementById('cmpModConta').onclick = e=>{ if(e.target.id==='cmpModConta') cmpCloseConta(); };
+  // solicitações de comprovante (todos os usuários)
+  document.getElementById('cmpSolicBtn').onclick = cmpOpenSolic;
+  document.getElementById('cmpSolicClose').onclick = cmpCloseSolic;
+  document.getElementById('cmpSolicCancel').onclick = cmpCloseSolic;
+  document.getElementById('cmpSolicSend').onclick = cmpSendSolic;
+  document.getElementById('cmpModSolic').onclick = e=>{ if(e.target.id==='cmpModSolic') cmpCloseSolic(); };
+  document.getElementById('cmpRespClose').onclick = cmpCloseResp;
+  document.getElementById('cmpRespCancel').onclick = cmpCloseResp;
+  document.getElementById('cmpRespSend').onclick = cmpSendResp;
+  document.getElementById('cmpModResp').onclick = e=>{ if(e.target.id==='cmpModResp') cmpCloseResp(); };
+  // estado inicial
+  cmpCheckConn();
+  cmpLoadContas().then(cmpRenderContas);
+  cmpLoadSolic();
+  cmpLoad();
+}
 
 document.querySelectorAll('.tab').forEach(btn=>{
   btn.addEventListener('click',()=>{
-    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
-    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-    btn.classList.add('on');
     const p=btn.dataset.p;
+    const adm = Auth.currentUser()?.role==='admin';
+    // Trava de acesso: bloqueia navegação para área sem permissão.
+    if(!adm && (p==='usuarios' || !podeVer(p))){ toast('Você não tem acesso a esta área.','er'); return; }
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+    document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
+    btn.classList.add('on');
     document.getElementById('page-'+p).classList.add('on');
     if(pageRenders[p])pageRenders[p]();
     if(window.innerWidth<=768) toggleMenu(false);   // fecha o drawer ao escolher uma aba
   });
 });
+
+// Navegação a partir da página inicial (hub)
+function irPara(p){
+  const t=document.querySelector(`.tab[data-p="${p}"]`);
+  if(t) t.click();
+}
+// Voltar à página inicial
+function irHome(){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  const h=document.getElementById('page-home');
+  if(h) h.classList.add('on');
+  if(window.innerWidth<=768) toggleMenu(false);
+}
+
+// Tópicos recolhíveis do menu
+function toggleGrp(btn){
+  const g=btn.closest('.tab-grp');
+  g.classList.toggle('closed');
+  localStorage.setItem('cj_grp_'+g.dataset.grp, g.classList.contains('closed')?'0':'1');
+}
+function initMenuGrupos(){
+  document.querySelectorAll('.tab-grp').forEach(g=>{
+    const st=localStorage.getItem('cj_grp_'+g.dataset.grp);
+    if(st==='0') g.classList.add('closed');   // fechado só se salvo explicitamente; padrão = aberto
+  });
+}
 
 // Menu lateral (drawer) no mobile
 function toggleMenu(open){
@@ -3899,6 +5213,7 @@ async function executarLimpar(){
 
 function initApp(){
   initTema();
+  initMenuGrupos();
   document.getElementById('pdate').textContent=getPerLabel(currentPer);
   setupDZ();
   document.getElementById('fMarca').addEventListener('change',renderTabela);
