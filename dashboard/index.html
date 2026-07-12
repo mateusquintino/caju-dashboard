@@ -405,6 +405,14 @@ input.fsel[type="date"]{background-image:var(--cal-icon);background-repeat:no-re
 #page-comprovantes .cmp-badge.on .cmp-dot{background:#10B981}
 #page-comprovantes .cmp-badge.off .cmp-dot{background:#EF4444}
 #page-comprovantes .cmp-st{display:inline-flex;font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+#page-comprovantes .cmp-pager{display:flex;align-items:center;justify-content:center;gap:12px;margin:-.9rem 0 1.6rem;flex-wrap:wrap}
+#page-comprovantes .cmp-pager:empty{display:none}
+#page-comprovantes .cmp-pg{background:var(--bg3);border:1px solid var(--bd);color:var(--t2);padding:5px 13px;border-radius:7px;cursor:pointer;font-family:'Syne',sans-serif;font-size:.72rem;font-weight:700;transition:all var(--t)}
+#page-comprovantes .cmp-pg:hover:not(:disabled){border-color:var(--or1);color:var(--or1)}
+#page-comprovantes .cmp-pg:disabled{opacity:.4;cursor:default}
+#page-comprovantes .cmp-pg-info{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--t3)}
+#page-comprovantes .cmp-perpage{display:inline-flex;align-items:center;gap:6px;margin-right:12px}
+#page-comprovantes .cmp-perpage .pdt{height:28px}
 /* modais do módulo (ficam fora de #page-comprovantes) */
 .cmp-mcsec{font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--or1);margin:.6rem 0 .1rem;border-top:1px solid var(--bd);padding-top:.6rem}
 .cmp-note{background:var(--bg3);border:1px solid var(--bd);border-radius:9px;padding:.7rem .9rem;font-size:.72rem;color:var(--t2);line-height:1.5;margin-bottom:.5rem}
@@ -1546,6 +1554,9 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
 
     <div class="shdr">
       <span class="stit">Detalhe dos comprovantes</span><span class="sln"></span>
+      <span class="cmp-perpage"><span class="pdt-lbl">por página</span>
+        <select id="cmpPerPage" class="pdt"><option>50</option><option>100</option><option>200</option></select>
+      </span>
       <span class="stit" id="cmpCount"></span>
     </div>
     <div class="cmp-search">
@@ -1567,6 +1578,7 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
         </tbody>
       </table>
     </div>
+    <div id="cmpPager" class="cmp-pager"></div>
 
     <div class="shdr" style="margin-top:2.2rem">
       <span class="stit">Solicitações de comprovante</span><span class="sln"></span>
@@ -2380,10 +2392,11 @@ async function uzEnsureEmpresas(force){
     const loja  = (c.loja && c.loja.trim()) ? c.loja.trim() : (c.empresa||'').trim();
     if(!loja) return;
     const banco = (c.banco||'').trim() || 'Sem banco';
-    const nome  = `${loja} - ${banco}`;   // ordem invertida: loja na frente
-    if(!seen.has(nome)){ seen.add(nome); lista.push({ banco, loja, nome }); }
+    const nome  = `${loja} - ${banco}`;   // CHAVE interna (não muda) — preserva as permissões já salvas
+    const label = (c.empresa && c.empresa.trim()) ? c.empresa.trim() : loja;  // nome exibido = igual ao módulo Contas
+    if(!seen.has(nome)){ seen.add(nome); lista.push({ banco, loja, nome, label }); }
   });
-  UZ_EMPRESAS = lista.sort((a,b)=> a.banco.localeCompare(b.banco,'pt-BR') || a.loja.localeCompare(b.loja,'pt-BR'));
+  UZ_EMPRESAS = lista.sort((a,b)=> a.banco.localeCompare(b.banco,'pt-BR') || a.label.localeCompare(b.label,'pt-BR'));
 }
 /* Módulos carregados da tabela `modulos` (nome exibido + chave = página do site).
    Todo módulo novo cadastrado lá aparece automaticamente aqui e já entra no
@@ -2573,7 +2586,7 @@ function uzRenderEmps(){
   Object.keys(grupos).sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(banco=>{
     html += `<div class="uz-emp-hd">${banco}</div>`;
     html += grupos[banco].map(e=>
-      `<label class="uz-emp"><input type="checkbox" ${_uzDraft.empresas.has(e.nome)?'checked':''} onchange="uzToggleEmp('${e.nome.replace(/'/g,"\\'")}',this.checked)"><span>${e.loja}</span></label>`).join('');
+      `<label class="uz-emp"><input type="checkbox" ${_uzDraft.empresas.has(e.nome)?'checked':''} onchange="uzToggleEmp('${e.nome.replace(/'/g,"\\'")}',this.checked)"><span>${e.label||e.loja}</span></label>`).join('');
   });
   document.getElementById('muEmps').innerHTML = html;
   document.getElementById('muSelAll').textContent = _uzDraft.empresas.size===UZ_EMPRESAS.length ? 'Limpar seleção' : 'Selecionar todas';
@@ -2692,7 +2705,7 @@ async function fetchNotifs(){
   _notifSolic = [];
   try{
     const { data } = await _SB.from('solicitacoes_comprovante')
-      .select('id,empresa_key,empresa_nome,titulo_everest,fornecedor,valor,status,solicitante_id,respondido_at,expira_at,created_at')
+      .select('id,empresa_key,empresa_nome,cnpj,titulo_everest,fornecedor,valor,status,solicitante_id,respondido_at,expira_at,created_at')
       .order('created_at',{ascending:false}).limit(60);
     _notifSolic = data||[];
   }catch(e){ _notifSolic=[]; }
@@ -2710,7 +2723,7 @@ function _cmpNotifSplit(){
   const uid = _currentUser && _currentUser.id, now = new Date(), seen = _solicSeenSet();
   const pend = [], resp = [];
   (_notifSolic||[]).forEach(r=>{
-    if(r.status==='pendente' && typeof cmpPodeAtender==='function' && cmpPodeAtender(r.empresa_key)) pend.push(r);
+    if(r.status==='pendente' && typeof cmpPodeAtender==='function' && cmpPodeAtender(r.cnpj)) pend.push(r);
     if(r.status==='respondido' && r.solicitante_id===uid && (!r.expira_at || new Date(r.expira_at)>now) && !seen.has(r.id)) resp.push(r);
   });
   return { pend, resp };
@@ -4507,6 +4520,7 @@ const CMP_CATS = {
   'TRANSFERENCIAS-OUTRAS': {l:'Transf. Outras',  i:'⇄',  c:'#9A9990'}
 };
 let cmpData = [], cmpContas = [], cmpDrive = {}, cmpCat = '', cmpStarted = false, cmpEditingKey = '';
+let cmpRows = [], cmpPage = 1, cmpPerPage = 50;
 const cmpBase = () => (cmpProxyUrl || 'http://localhost:3000').replace(/\/+$/,'');
 function cmpFmt(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 function cmpDocFmt(d){
@@ -4609,7 +4623,9 @@ function cmpFilter(list){
 function cmpRender(){
   const base = cmpFilter(cmpData);
   cmpRenderCats(base);
-  cmpRenderTable(base.filter(r=>!cmpCat || r.category===cmpCat));
+  cmpRows = base.filter(r=>!cmpCat || r.category===cmpCat);
+  cmpPage = 1;
+  cmpRenderTable();
 }
 function cmpRenderCats(list){
   const tot = {}; Object.keys(CMP_CATS).forEach(c=>tot[c]={n:0,s:0});
@@ -4630,10 +4646,15 @@ function cmpRenderCats(list){
     cmpRender();
   });
 }
-function cmpRenderTable(rows){
-  document.getElementById('cmpCount').textContent = rows.length + ' registro(s)';
+function cmpRenderTable(){
+  const total = cmpRows.length;
+  const pages = Math.max(1, Math.ceil(total / cmpPerPage));
+  if(cmpPage > pages) cmpPage = pages;
+  if(cmpPage < 1) cmpPage = 1;
+  const rows = cmpRows.slice((cmpPage-1)*cmpPerPage, cmpPage*cmpPerPage);
+  document.getElementById('cmpCount').textContent = total + ' registro(s)';
   const body = document.getElementById('cmpBody');
-  if(!rows.length){ body.innerHTML = '<tr><td colspan="9" class="ecel">Nenhum comprovante para o período/filtro selecionado.</td></tr>'; return; }
+  if(!total){ body.innerHTML = '<tr><td colspan="9" class="ecel">Nenhum comprovante para o período/filtro selecionado.</td></tr>'; cmpRenderPager(0,1); return; }
   body.innerHTML = rows.map(r=>{
     const c = CMP_CATS[r.category] || {l:r.category, i:'•', c:'#9A9990'};
     const dt = new Date(r.datetime);
@@ -4655,6 +4676,18 @@ function cmpRenderTable(rows){
     </tr>`;
   }).join('');
   document.querySelectorAll('#cmpBody .cmp-dl').forEach(b=>b.onclick=()=>cmpDownload(b));
+  cmpRenderPager(total, pages);
+}
+function cmpRenderPager(total, pages){
+  const el = document.getElementById('cmpPager'); if(!el) return;
+  if(total <= cmpPerPage){ el.innerHTML = ''; return; }
+  const ini = (cmpPage-1)*cmpPerPage + 1, fim = Math.min(total, cmpPage*cmpPerPage);
+  el.innerHTML =
+    `<button class="cmp-pg" data-pg="prev" ${cmpPage<=1?'disabled':''}>‹ Anterior</button>` +
+    `<span class="cmp-pg-info">${ini}–${fim} de ${total} · página ${cmpPage} de ${pages}</span>` +
+    `<button class="cmp-pg" data-pg="next" ${cmpPage>=pages?'disabled':''}>Próxima ›</button>`;
+  const prev = el.querySelector('[data-pg="prev"]'); if(prev) prev.onclick = ()=>{ if(cmpPage>1){ cmpPage--; cmpRenderTable(); window.scrollTo({top:0,behavior:'smooth'}); } };
+  const next = el.querySelector('[data-pg="next"]'); if(next) next.onclick = ()=>{ if(cmpPage<pages){ cmpPage++; cmpRenderTable(); window.scrollTo({top:0,behavior:'smooth'}); } };
 }
 async function cmpDownload(btn){
   const d = btn.dataset;
@@ -4850,17 +4883,32 @@ const CMP_BUCKET = 'comprovantes-solic';
 let cmpSolic = [], cmpRespId = null;
 function cmpParseValor(s){ s = String(s||'').trim().replace(/[^\d,.-]/g,''); if(s.includes(',')) s = s.replace(/\./g,'').replace(',','.'); return parseFloat(s)||0; }
 /* Empresas que o usuário pode escolher ao solicitar = empresas do dashboard a que tem acesso. */
-function cmpEmpresasDoUsuario(){
-  const arr = (typeof getContas==='function') ? getContas() : ((typeof _contas!=='undefined' && _contas) || []);
+/* Lista de empresas vem SEMPRE das contas atuais (tabela `contas`), buscada na hora
+   que o modal abre — assim, toda conta nova cadastrada já aparece aqui. Deduplicada
+   por empresa (sem o banco) e respeitando o acesso do usuário. */
+/* Lista de empresas vem das CONTAS DO MÓDULO COMPROVANTES (aba Contas / proxy),
+   recarregadas na hora — toda conta nova cadastrada lá já aparece aqui.
+   Deduplicada por empresa (as contas Santander+Itaú da mesma empresa viram 1). */
+async function cmpFetchEmpresas(){
+  await cmpLoadContas();   // recarrega /admin/contas (já filtrado pelo acesso do usuário)
   const seen = {}, out = [];
-  arr.forEach(c=>{ const k = contaKey(c); if(k && !seen[k]){ seen[k]=1; out.push({ key:k, cnpj:String(c.cnpj||'').replace(/\D/g,'') }); } });
+  (cmpContas||[]).forEach(c=>{
+    const nome = (c.nome||'').trim();
+    if(nome && !seen[nome]){ seen[nome]=1; out.push({ key:nome, cnpj:String(c.cnpj||'').replace(/\D/g,'') }); }
+  });
   return out.sort((a,b)=>a.key.localeCompare(b.key,'pt-BR'));
 }
 /* Só Financeiro com acesso à empresa (ou admin) pode atender. */
-function cmpPodeAtender(empresaKey){
+function cmpPodeAtender(cnpjAlvo){
   if(!_currentUser) return false;
   if(_currentUser.role==='admin') return true;
-  return _currentUser.grupo==='Financeiro' && Array.isArray(_currentUser.empresas) && _currentUser.empresas.includes(empresaKey);
+  if(_currentUser.grupo!=='Financeiro' || !Array.isArray(_currentUser.empresas)) return false;
+  const alvo = String(cnpjAlvo||'').replace(/\D/g,'');
+  if(!alvo) return false;
+  // financeiro atende se tem acesso a uma conta do dashboard com o mesmo CNPJ
+  const allow = new Set(_currentUser.empresas);
+  const dash = (typeof _contas!=='undefined' && Array.isArray(_contas)) ? _contas : [];
+  return dash.some(c => String(c.cnpj||'').replace(/\D/g,'')===alvo && allow.has(contaKey(c)));
 }
 function cmpSolicExpirada(r){ return r.status==='respondido' && r.expira_at && (new Date(r.expira_at) < new Date()); }
 function cmpSolicStatus(r){
@@ -4885,7 +4933,7 @@ function cmpRenderSolic(){
     const dtliq = r.data_liquidacao ? new Date(r.data_liquidacao+'T00:00:00').toLocaleDateString('pt-BR') : '—';
     let acao = '<span class="cmp-sub">—</span>';
     if(cmpSolicExpirada(r)) acao = '<span class="cmp-sub">expirado</span>';
-    else if(r.status==='pendente' && cmpPodeAtender(r.empresa_key)) acao = `<button class="cmp-dl" data-resp="${r.id}">Responder</button>`;
+    else if(r.status==='pendente' && cmpPodeAtender(r.cnpj)) acao = `<button class="cmp-dl" data-resp="${r.id}">Responder</button>`;
     else if(r.status==='pendente') acao = '<span class="cmp-sub">aguardando</span>';
     else if(r.status==='respondido') acao = `<button class="cmp-dl" data-baixar="${r.id}">⬇ Comprovante</button>`;
     return `<tr>
@@ -4902,18 +4950,19 @@ function cmpRenderSolic(){
   body.querySelectorAll('[data-resp]').forEach(b=>b.onclick=()=>cmpOpenResp(b.dataset.resp));
   body.querySelectorAll('[data-baixar]').forEach(b=>b.onclick=()=>cmpBaixarResp(b.dataset.baixar));
 }
-function cmpOpenSolic(){
+async function cmpOpenSolic(){
   const sel = document.getElementById('cmpSolicEmpresa');
-  const emp = cmpEmpresasDoUsuario();
-  sel.innerHTML = emp.length
-    ? emp.map(e=>`<option value="${e.key}" data-cnpj="${e.cnpj}">${e.key}</option>`).join('')
-    : '<option value="">(nenhuma empresa liberada para você)</option>';
+  sel.innerHTML = '<option value="">Carregando…</option>';
   document.getElementById('cmpSolicTitulo').value = '';
   document.getElementById('cmpSolicData').value = '';
   document.getElementById('cmpSolicForn').value = '';
   document.getElementById('cmpSolicValor').value = '';
   document.getElementById('cmpModSolic').classList.add('op');
   if(window._calInit) window._calInit();
+  const emp = await cmpFetchEmpresas();   // busca as contas atuais do banco
+  sel.innerHTML = emp.length
+    ? emp.map(e=>`<option value="${e.key}" data-cnpj="${e.cnpj}">${e.key}</option>`).join('')
+    : '<option value="">(nenhuma empresa liberada para você)</option>';
 }
 function cmpCloseSolic(){ document.getElementById('cmpModSolic').classList.remove('op'); }
 async function cmpSendSolic(){
@@ -5013,6 +5062,7 @@ function cmpOpen(){
   const btn = document.getElementById('cmpConsult'); if(btn) btn.onclick = cmpLoad;
   const sel = document.getElementById('cmpConta'); if(sel) sel.onchange = cmpLoad;
   const src = document.getElementById('cmpSearch'); if(src) src.oninput = cmpRender;
+  const pp = document.getElementById('cmpPerPage'); if(pp) pp.onchange = ()=>{ cmpPerPage = parseInt(pp.value,10)||50; cmpPage = 1; cmpRenderTable(); };
   // sub-nav
   document.querySelectorAll('#page-comprovantes .cmp-tab').forEach(t=>t.onclick=()=>cmpShowView(t.dataset.view));
   // Visualizador: oculta todo o cabeçalho (abas, status de conexão e engrenagem);
