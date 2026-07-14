@@ -4522,6 +4522,20 @@ const CMP_CATS = {
 let cmpData = [], cmpContas = [], cmpDrive = {}, cmpCat = '', cmpStarted = false, cmpEditingKey = '';
 let cmpRows = [], cmpPage = 1, cmpPerPage = 50;
 const cmpBase = () => (cmpProxyUrl || 'http://localhost:3000').replace(/\/+$/,'');
+/* Token do usuário logado (Supabase) para autenticar no proxy.
+   getSession() já renova o token automaticamente quando necessário. */
+async function cmpAuthHeaders(extra){
+  const h = { ...(extra||{}) };
+  try{ const { data:{ session } } = await _SB.auth.getSession(); if(session && session.access_token) h['Authorization'] = 'Bearer ' + session.access_token; }
+  catch(e){}
+  return h;
+}
+/* fetch com o token do Supabase — usado em TODAS as chamadas protegidas ao proxy. */
+async function cmpFetch(url, opts){
+  opts = opts || {};
+  opts.headers = await cmpAuthHeaders(opts.headers);
+  return fetch(url, opts);
+}
 function cmpFmt(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 function cmpDocFmt(d){
   if(!d) return '—';
@@ -4557,7 +4571,7 @@ function cmpContaPermitida(c){
 
 async function cmpLoadContas(){
   try{
-    const r = await fetch(cmpBase()+'/admin/contas');
+    const r = await cmpFetch(cmpBase()+'/admin/contas');
     if(r.ok){ const j = await r.json(); cmpContas = (j.contas || []).filter(cmpContaPermitida); }
   }catch(e){ /* proxy offline */ }
   const sel = document.getElementById('cmpConta'); if(!sel) return;
@@ -4590,7 +4604,7 @@ async function cmpLoad(){
     u.searchParams.set('end', ate);
     const loja = document.getElementById('cmpConta').value;
     if(loja) u.searchParams.set('conta', loja);
-    const r = await fetch(u);
+    const r = await cmpFetch(u);
     const j = await r.json();
     if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
     cmpData = j.receipts || [];
@@ -4709,7 +4723,7 @@ async function cmpSantanderPDF(paymentId, refMonth, contaKey){
   const H = extra => { const h = {'Accept':'application/json', ...(extra||{})}; if(contaKey) h['X-Conta-Key']=contaKey; return h; };
   let post = null;
   for(let a=0;a<4;a++){
-    post = await fetch(base,{method:'POST',headers:H({'Content-Type':'application/json'}),body:JSON.stringify({payment:{requestValueDate:refMonth}})});
+    post = await cmpFetch(base,{method:'POST',headers:H({'Content-Type':'application/json'}),body:JSON.stringify({payment:{requestValueDate:refMonth}})});
     if(post.ok) break;
     if([429,500,502,503,504].includes(post.status)){ await new Promise(r=>setTimeout(r,2000)); continue; }
     throw new Error('POST HTTP '+post.status);
@@ -4719,7 +4733,7 @@ async function cmpSantanderPDF(paymentId, refMonth, contaKey){
   const reqId = created.request && created.request.requestId;
   for(let i=0;i<10;i++){
     await new Promise(r=>setTimeout(r,1800));
-    const g = await fetch(base+'/'+encodeURIComponent(reqId), {headers:H()});
+    const g = await cmpFetch(base+'/'+encodeURIComponent(reqId), {headers:H()});
     if(!g.ok) continue;
     const t = await g.text(); const j = t ? JSON.parse(t) : {};
     if(j.file && j.file.statusInfo && j.file.statusInfo.statusCode==='AVAILABLE' && j.file.fileRepository && j.file.fileRepository.location)
@@ -4850,7 +4864,7 @@ async function cmpSaveConta(){
     const kf = document.getElementById('cmpMcKeyFile').files[0]; if(kf) fd.append('keyfile', kf);
   }
   try{
-    const r = await fetch(cmpBase()+'/admin/contas', {method:'POST', body:fd});
+    const r = await cmpFetch(cmpBase()+'/admin/contas', {method:'POST', body:fd});
     const j = await r.json();
     if(!r.ok || !j.ok) throw new Error(j.erro || ('HTTP '+r.status));
     cmpCloseConta(); await cmpLoadContas(); cmpRenderContas(); cmpCheckConn();
@@ -4861,7 +4875,7 @@ async function cmpDeleteConta(){
   if(!cmpEditingKey){ cmpCloseConta(); return; }
   if(!confirm('Remover esta conta do proxy?')) return;
   try{
-    const r = await fetch(cmpBase()+'/admin/contas/'+encodeURIComponent(cmpEditingKey), {method:'DELETE'});
+    const r = await cmpFetch(cmpBase()+'/admin/contas/'+encodeURIComponent(cmpEditingKey), {method:'DELETE'});
     if(!r.ok) throw new Error('HTTP '+r.status);
     cmpCloseConta(); await cmpLoadContas(); cmpRenderContas(); cmpCheckConn();
     toast('Conta removida.','ok');
@@ -4870,7 +4884,7 @@ async function cmpDeleteConta(){
 async function cmpImportItau(){
   toast('Importando empresas do Itaú...');
   try{
-    const r = await fetch(cmpBase()+'/admin/importar-itau', {method:'POST'});
+    const r = await cmpFetch(cmpBase()+'/admin/importar-itau', {method:'POST'});
     const j = await r.json();
     if(!j.ok) throw new Error(j.erro || 'falhou');
     await cmpLoadContas(); cmpRenderContas(); cmpCheckConn();
