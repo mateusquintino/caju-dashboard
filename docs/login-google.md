@@ -38,28 +38,30 @@ do login. Sem isso, o login volta com erro "redirect não permitido".
 
 1. Ainda em **Authentication** → clique em **URL Configuration**.
 2. **Site URL**: coloque o endereço onde o dashboard fica publicado
-   (GitHub Pages). Exemplo:
-   `https://SEU-USUARIO.github.io/SEU-REPOSITORIO/`
-3. **Redirect URLs** → **Add URL**: adicione o endereço exato da página do
-   login (onde o `index.html` abre). Exemplos possíveis:
-   - `https://SEU-USUARIO.github.io/SEU-REPOSITORIO/`
-   - `https://SEU-USUARIO.github.io/SEU-REPOSITORIO/dashboard/`
-   - `https://SEU-USUARIO.github.io/SEU-REPOSITORIO/dashboard/index.html`
+   (HostGator). No nosso caso:
+   `https://financeirogrupocajupar.com`
+3. **Redirect URLs** → **Add URL**: adicione os endereços exatos onde o
+   login pode voltar. Adicione todos abaixo:
+   - `https://financeirogrupocajupar.com`
+   - `https://financeirogrupocajupar.com/`
+   - `https://financeirogrupocajupar.com/dashboard/`
+   - `https://financeirogrupocajupar.com/dashboard/index.html`
 
-   Dica: use a URL que aparece na barra do navegador quando você abre o
-   dashboard publicado — é exatamente essa que deve entrar aqui. Pode
-   adicionar mais de uma se tiver dúvida.
+   Dica: o dashboard usa a própria URL da página como retorno, então
+   qualquer endereço que apareça na barra do navegador ao abrir o
+   dashboard precisa estar nesta lista.
 4. Clique em **Save**.
 
-> Como descobrir sua URL do GitHub Pages: no repositório do GitHub →
-> **Settings** → **Pages**. O endereço publicado aparece no topo.
+> Observação: o domínio `financeirogrupocajupar.com` precisa estar apontado
+> para o HostGator e com o SSL (HTTPS) ativo antes de testar o login — o
+> Google exige HTTPS.
 
 ---
 
 ## Passo 3 — Testar
 
-1. Abra o dashboard **pela URL publicada** (GitHub Pages), não pelo arquivo
-   local — o login Google não funciona em `file://`.
+1. Abra o dashboard **pela URL publicada** (`https://financeirogrupocajupar.com`),
+   não pelo arquivo local — o login Google não funciona em `file://`.
 2. Clique em **Entrar com Google** e escolha uma conta **@cajupar.com**.
 3. O usuário entra como **pendente** (aguardando aprovação).
 4. Um administrador aprova na aba **Usuários**. Pronto.
@@ -75,7 +77,8 @@ banco) e recebem a mensagem de acesso negado.
   remova a anterior (a que foi compartilhada em conversa). No Google Cloud →
   Credenciais → seu cliente OAuth → em "Chaves secretas do cliente",
   "Adicionar chave" e depois excluir a antiga. Atualize o secret no Supabase.
-- Nunca versione o Client Secret no GitHub.
+- Nunca versione nem faça upload do Client Secret. Ele fica **somente** no
+  painel do Supabase.
 
 ---
 
@@ -84,7 +87,8 @@ banco) e recebem a mensagem de acesso negado.
 - **"redirect_uri_mismatch"** (tela do Google): o URI de redirecionamento no
   Google Cloud está diferente do callback do Supabase. Confira o Passo 1.7.
 - **"requested path is invalid" / volta para o login sem entrar**: falta
-  adicionar a URL da página em **Redirect URLs** (Passo 2).
+  adicionar a URL da página em **Redirect URLs** (Passo 2). Confira que a
+  URL bate exatamente (com/sem barra no final, `/dashboard/`, etc.).
 - **Entra mas cai em "aguardando aprovação"**: comportamento esperado — um
   admin precisa aprovar na aba Usuários.
 - **"Apenas contas @cajupar.com..."**: a conta Google usada não é do domínio

@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -97,6 +98,9 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--t1);min-heig
 .tico svg{width:20px;height:20px;display:block;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .tlbl{display:none}
 .hdr:hover .tlbl{display:block}
+/* Submódulos com nome longo podem quebrar em 2 linhas (não cortar). */
+.hdr:hover .tab-sub .tab{white-space:normal;align-items:center;min-height:38px}
+.hdr:hover .tab-sub .tlbl{white-space:normal;line-height:1.2}
 
 /* ── TÓPICOS / GRUPOS DE MENU ── */
 .tab-grp{display:flex;flex-direction:column;gap:3px}
@@ -515,6 +519,9 @@ input.fsel[type="date"]{background-image:var(--cal-icon);background-repeat:no-re
   color:var(--t1);transition:all var(--t);width:100%}
 .fi2:hover{border-color:var(--bdh)}
 .fi2:focus{outline:none;border-color:var(--or1);box-shadow:0 0 0 3px var(--glow)}
+.fi2.fi-err{border-color:#EF4444;box-shadow:0 0 0 3px rgba(239,68,68,.18)}
+.fi2.fi-err:focus{border-color:#EF4444;box-shadow:0 0 0 3px rgba(239,68,68,.25)}
+.mft label.lbl-err{color:#EF4444}
 select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:pointer;padding-right:32px;
   background-image:var(--sel-chevron);background-repeat:no-repeat;background-position:right 12px center;background-size:12px}
 .mfo{display:flex;gap:7px;justify-content:flex-end;
@@ -1053,14 +1060,27 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
           <span class="tico"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg></span>
           <span class="tlbl">Comprovantes</span>
         </button>
+        <button class="tab" data-p="emprestimos" title="Empréstimo">
+          <span class="tico"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg></span>
+          <span class="tlbl">Empréstimo</span>
+        </button>
       </div>
     </div>
 
-    <!-- ══ TÓPICO: EMPRÉSTIMO ══ -->
-    <button class="tab tab-topic" data-p="emprestimos" title="Empréstimo">
-      <span class="tico"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg></span>
-      <span class="tlbl">Empréstimo</span>
-    </button>
+    <!-- ══ TÓPICO: FECHAMENTO DE CAIXA ══ -->
+    <div class="tab-grp" data-grp="fechamento">
+      <button class="tab-hd" onclick="toggleGrp(this)" title="Fechamento de caixa">
+        <span class="tico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="7" y1="13" x2="9" y2="13"/><line x1="11" y1="13" x2="13" y2="13"/><line x1="15" y1="13" x2="17" y2="13"/><line x1="7" y1="16" x2="9" y2="16"/><line x1="11" y1="16" x2="13" y2="16"/></svg></span>
+        <span class="tlbl">Fechamento de caixa</span>
+        <span class="tchev"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></span>
+      </button>
+      <div class="tab-sub">
+        <button class="tab" data-p="fechamento_relatorio" title="Recebimento em Dinheiro Diário">
+          <span class="tico"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></span>
+          <span class="tlbl">Recebimento em Dinheiro Diário</span>
+        </button>
+      </div>
+    </div>
 
     <!-- ══ TÓPICO: USUÁRIO ══ -->
     <button class="tab tab-topic" data-p="usuarios" id="tabUsuarios" style="display:none" title="Usuário">
@@ -1099,7 +1119,7 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
         <path fill="url(#lg-h2)" d="M551.75,563.07v-30.08c-1.81,0-3.58-.14-5.3-.36-.82-.09-1.63-.23-2.4-.41-18.48-3.58-32.39-19.84-32.39-39.37,0-22.15,17.94-40.14,40.09-40.14.59,0,1.13,0,1.72.05,3.99-22.83-13.36-42.9-40.82-42.9-30.49,0-53.68,24.37-53.68,61.21,0,50.2,38.64,92.01,92.78,92.01Z"/>
       </svg>
       <div>
-        <h1>Bem-vindo, Caju</h1>
+        <h1 id="homeWelcome">Bem-vindo</h1>
         <p>Escolha uma funcionalidade para começar.</p>
       </div>
     </div>
@@ -1143,6 +1163,11 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
         <span class="hcard-ico"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg></span>
         <span class="hcard-tit">Empréstimo</span>
         <span class="hcard-desc">Controle de parcelas e baixas.</span>
+      </button>
+      <button class="hcard" data-p="fechamento_relatorio" onclick="irPara('fechamento_relatorio')">
+        <span class="hcard-ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="7" y1="13" x2="9" y2="13"/><line x1="11" y1="13" x2="13" y2="13"/><line x1="15" y1="13" x2="17" y2="13"/><line x1="7" y1="16" x2="9" y2="16"/><line x1="11" y1="16" x2="13" y2="16"/></svg></span>
+        <span class="hcard-tit">Fechamento de caixa</span>
+        <span class="hcard-desc">Recebimento em dinheiro diário por loja.</span>
       </button>
       <button class="hcard" data-p="usuarios" onclick="irPara('usuarios')">
         <span class="hcard-ico"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
@@ -1615,8 +1640,8 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
     <div class="mod" style="max-width:460px">
       <div class="mhd"><h3>Conexão com o proxy</h3><button class="mcl" id="cmpCfgClose">✕</button></div>
       <div class="mbd">
-        <div class="cmp-note">O proxy local (<b>comprovantes-proxy</b>) cuida da autenticação (OAuth + certificado) dos bancos. Informe a URL onde ele está rodando — normalmente <code>http://localhost:3000</code>.</div>
-        <div class="mft"><label>URL do proxy</label><input class="fi2" id="cmpCfgUrl" placeholder="http://localhost:3000"/></div>
+        <div class="cmp-note">O proxy local (<b>comprovantes-proxy</b>) cuida da autenticação (OAuth + certificado) dos bancos. Informe a URL onde ele está rodando — normalmente <code>https://comprovante.financeirogrupocajupar.com/</code>.</div>
+        <div class="mft"><label>URL do proxy</label><input class="fi2" id="cmpCfgUrl" placeholder="https://comprovante.financeirogrupocajupar.com/"/></div>
       </div>
       <div class="mfo"><button class="bs" id="cmpCfgCancel">Cancelar</button><button class="bp" id="cmpCfgSave">Salvar e conectar</button></div>
     </div>
@@ -1812,7 +1837,140 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
     </div>
   </section>
 
+  <!-- ══ FECHAMENTO DE CAIXA · RELATÓRIO DIÁRIO ══ -->
+  <section class="page" id="page-fechamento_relatorio">
+    <div class="cpage-hdr">
+      <h2>Recebimento em Dinheiro Diário</h2>
+    </div>
+
+    <!-- ── VISÃO FORMULÁRIO (demais grupos) ── -->
+    <div id="fdFormWrap" style="display:none">
+      <div class="shdr" style="margin-top:.2rem"><span class="stit">Recebimento em dinheiro diário</span><span class="sln"></span></div>
+      <p style="font-size:.8rem;color:var(--t2);line-height:1.6;margin:-.4rem 0 1rem">Preencha ao fechamento do caixa do dia. As informações serão armazenadas para conferência dos valores depositados em dinheiro.</p>
+      <div class="kcard" style="padding:1.4rem 1.6rem;display:flex;flex-direction:column;gap:.9rem">
+        <div class="mfr">
+          <div class="mft"><label>Loja *</label><select class="fi2" id="fdLoja"><option value="">Escolher</option></select></div>
+          <div class="mft"><label>Data de fechamento do caixa *</label><input type="date" class="fi2" id="fdData"/></div>
+        </div>
+        <div class="mfr">
+          <div class="mft"><label>Valor *</label><input class="fi2" id="fdValor" inputmode="decimal" placeholder="R$ 0,00"/></div>
+          <div class="mft"><label>Responsável *</label><input class="fi2" id="fdResp" placeholder="Quem fechou o caixa"/></div>
+        </div>
+        <div class="mft"><label>Observação</label><input class="fi2" id="fdObs" placeholder="Opcional"/></div>
+        <div class="mft"><label>Foto da ficha de comprovação *</label>
+          <input type="file" accept="image/*" id="fdFoto" class="fi2" style="padding:7px 10px"/>
+          <span style="font-size:.68rem;color:var(--t3)">1 imagem (JPG/PNG), até 100 MB.</span>
+        </div>
+        <div class="mfo" style="border:0;padding:0;margin-top:.3rem">
+          <button class="bp" id="fdBtnEnviar" onclick="fdEnviar()">Enviar</button>
+        </div>
+      </div>
+      <div id="fdOkMsg" style="display:none;margin-top:1rem;padding:.8rem 1rem;border-radius:10px;background:rgba(16,185,129,.12);color:#10B981;font-size:.82rem;font-weight:600">✓ Lançamento enviado com sucesso. Obrigado!</div>
+    </div>
+
+    <!-- ── VISÃO RELATÓRIO (Financeiro / admin) ── -->
+    <div id="fdRepWrap" style="display:none">
+      <div class="pbar">
+        <span class="plbl">De</span>
+        <input type="date" id="fdFiltIni" class="pdt"/>
+        <span class="plbl" style="margin-left:2px">Até</span>
+        <input type="date" id="fdFiltFim" class="pdt"/>
+        <span class="plbl" style="margin-left:.5rem">Loja</span>
+        <select class="fsel" id="fdFiltLoja" style="min-width:150px"><option value="">Todas as lojas</option></select>
+        <button class="bp" style="margin-left:auto" onclick="fdCarregarRelatorio()">Consultar</button>
+        <button class="bs" id="fdBtnExport" onclick="fdExportar()" title="Exportar em .xlsx">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar
+        </button>
+      </div>
+
+      <div class="kgrid">
+        <div class="kcard ktotal">
+          <div class="klbl">Total no período</div>
+          <div class="kval" id="fdKpiTotal">R$ 0,00</div>
+          <div class="ksub" id="fdKpiSub">0 lançamentos</div>
+          <div class="kgl"></div>
+        </div>
+        <div class="kcard">
+          <div class="klbl">Lojas com lançamento</div>
+          <div class="kval" id="fdKpiLojas">0</div>
+          <div class="kbadge bg">no período</div>
+        </div>
+        <div class="kcard">
+          <div class="klbl">Lançamento mais recente</div>
+          <div class="kval" id="fdKpiUlt" style="font-size:1.05rem">—</div>
+        </div>
+      </div>
+
+      <div class="shdr"><span class="stit">Lançamentos</span><span class="sln"></span></div>
+      <div class="twrap">
+        <table class="dtbl" style="table-layout:auto">
+          <thead><tr>
+            <th>Data</th>
+            <th>Loja</th>
+            <th style="text-align:right">Valor</th>
+            <th>Responsável</th>
+            <th>Observação</th>
+            <th style="text-align:center">Ficha</th>
+            <th>Registrado por</th>
+            <th style="text-align:center">Ações</th>
+          </tr></thead>
+          <tbody id="fdTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
 </main>
+
+<!-- LIGHTBOX FICHA (Recebimento em Dinheiro Diário) -->
+<div id="fdLightbox" onclick="fdFecharFicha(event)"
+     style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);
+            align-items:center;justify-content:center;padding:24px">
+  <div style="position:relative;max-width:92vw;max-height:92vh;display:flex;flex-direction:column;gap:10px;align-items:center"
+       onclick="event.stopPropagation()">
+    <button onclick="fdFecharFicha(event,true)" title="Fechar"
+            style="position:absolute;top:-14px;right:-14px;width:34px;height:34px;border-radius:50%;
+                   border:none;cursor:pointer;background:#fff;color:#111;font-size:16px;font-weight:700;
+                   box-shadow:0 4px 14px rgba(0,0,0,.4)">✕</button>
+    <div id="fdLbLoading" style="color:#fff;font-size:.85rem">Carregando ficha…</div>
+    <img id="fdLbImg" alt="Ficha de comprovação" style="display:none;max-width:92vw;max-height:82vh;
+         border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.5);object-fit:contain;background:#fff"/>
+    <a id="fdLbOpen" href="#" target="_blank" rel="noopener"
+       style="color:#fff;font-size:.78rem;text-decoration:underline;opacity:.85">Abrir em nova aba</a>
+  </div>
+</div>
+
+<!-- MODAL EDITAR LANÇAMENTO (Recebimento em Dinheiro Diário) -->
+<div class="mov" id="modFd">
+  <div class="mod">
+    <div class="mhd">
+      <h3>Editar lançamento</h3>
+      <button class="mcl" onclick="fdFecharEdit()">✕</button>
+    </div>
+    <div class="mbd">
+      <input type="hidden" id="fdEId"/>
+      <div class="mfr">
+        <div class="mft"><label>Loja *</label><select class="fi2" id="fdELoja"></select></div>
+        <div class="mft"><label>Data de fechamento do caixa *</label><input type="date" class="fi2" id="fdEData"/></div>
+      </div>
+      <div class="mfr">
+        <div class="mft"><label>Valor *</label><input class="fi2" id="fdEValor" inputmode="decimal"/></div>
+        <div class="mft"><label>Responsável *</label><input class="fi2" id="fdEResp"/></div>
+      </div>
+      <div class="mft"><label>Observação</label><input class="fi2" id="fdEObs" placeholder="Opcional"/></div>
+      <div class="mft"><label>Trocar foto da ficha (opcional)</label>
+        <input type="file" accept="image/*" class="fi2" id="fdEFoto" style="padding:7px 10px"/>
+        <span style="font-size:.68rem;color:var(--t3)">Deixe em branco para manter a ficha atual.</span>
+      </div>
+    </div>
+    <div class="mfo">
+      <button class="bs" style="margin-right:auto;color:#EF4444;border-color:rgba(239,68,68,.4)" onclick="fdExcluir()">Excluir</button>
+      <button class="bs" onclick="fdFecharEdit()">Cancelar</button>
+      <button class="bp" id="fdEBtnSalvar" onclick="fdSalvarEdit()">Salvar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL LIMPAR BD -->
 <div class="mov" id="modLimpar">
@@ -2235,6 +2393,8 @@ const Auth = {
       const ini = u.nome ? u.nome.trim().split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() : '?';
       document.getElementById('userAvatar').textContent = ini;
       document.getElementById('userNome').textContent   = u.nome || u.email;
+      const hw = document.getElementById('homeWelcome');
+      if(hw){ const primeiro = (u.nome||'').trim().split(' ')[0] || (u.email||'').split('@')[0]; hw.textContent = 'Bem-vindo, ' + primeiro; }
       const roleTag = document.getElementById('userRoleTag');
       roleTag.textContent = isAdm ? 'ADM' : (u.grupo || 'Usuário');
       roleTag.className = 'user-role ' + (isAdm ? 'role-adm' : 'role-usr');
@@ -2410,6 +2570,7 @@ let UZ_MODULOS = [
   {nome:'Importar OFX',        chave:'importar'},
   {nome:'Comprovantes',        chave:'comprovantes'},
   {nome:'Empréstimos',         chave:'emprestimos'},
+  {nome:'Recebimento em Dinheiro Diário', chave:'fechamento_relatorio'},
   {nome:'Usuários',            chave:'usuarios'},
 ];
 let _uzModulosCarregado = false;
@@ -2709,11 +2870,22 @@ async function fetchNotifs(){
       .order('created_at',{ascending:false}).limit(60);
     _notifSolic = data||[];
   }catch(e){ _notifSolic=[]; }
+  _notifGeral = [];
+  try{
+    if(_currentUser && _currentUser.id){
+      const { data } = await _SB.from('notificacoes')
+        .select('id,tipo,titulo,mensagem,ref,created_at')
+        .eq('user_id', _currentUser.id).eq('lida', false)
+        .order('created_at',{ascending:false}).limit(30);
+      _notifGeral = data||[];
+    }
+  }catch(e){ _notifGeral=[]; }
   renderNotifBadge();
   const p=document.getElementById('notifPanel');
   if(p && p.classList.contains('on')) renderNotifPanel();
 }
 let _notifSolic = [];
+let _notifGeral = [];
 /* "Visto" das notificações de comprovante recebido (por usuário) — depois de abrir o
    sino, a notificação some e não conta mais no badge. */
 function _solicSeenKey(){ return 'cj_solic_recv_seen_' + ((_currentUser && _currentUser.id) || ''); }
@@ -2734,16 +2906,30 @@ function _notifSeen(){ return localStorage.getItem(NOTIF_SEEN_KEY)||''; }
 function _notifDismiss(){ return localStorage.getItem(NOTIF_DISMISS_KEY)||''; }
 function _notifNovasImp(){ const s=_notifSeen(), d=_notifDismiss(), t=s>d?s:d;
   return _notifImports.filter(i=>String(i.data_importacao||'')>t).length; }
-function limparNotifs(){
+async function limparNotifs(){
   const cs=_cmpNotifSplit();
   _solicMarkSeen(cs.resp.map(r=>r.id));
+  if(_notifGeral && _notifGeral.length){
+    const ids=_notifGeral.map(n=>n.id);
+    try{ await _SB.from('notificacoes').update({lida:true}).in('id',ids); }catch(e){}
+    _notifGeral=[];
+  }
   renderNotifPanel();
   renderNotifBadge();
 }
 
+async function _notifAbrirGeral(id){
+  try{ await _SB.from('notificacoes').update({lida:true}).eq('id',id); }catch(e){}
+  _notifGeral = (_notifGeral||[]).filter(n=>String(n.id)!==String(id));
+  renderNotifBadge();
+  toggleNotif(false);
+  const t=document.querySelector('.tab[data-p="fechamento_relatorio"]');
+  if(t) t.click();
+}
+
 function renderNotifBadge(){
   const cs=_cmpNotifSplit();
-  const n=_notifPending + cs.pend.length + cs.resp.length;
+  const n=_notifPending + cs.pend.length + cs.resp.length + (_notifGeral?_notifGeral.length:0);
   const b=document.getElementById('notifBadge');
   if(!b) return;
   if(n>0){ b.textContent=n>99?'99+':String(n); b.style.display=''; }
@@ -2760,6 +2946,12 @@ function renderNotifPanel(){
       <span class="notif-ic"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg></span>
       <span><b>${_notifPending}</b> ${_notifPending===1?'pessoa aguardando aprovação':'pessoas aguardando aprovação'}<br><span class="notif-sub">Clique para revisar em Usuários</span></span></button>`;
   }
+  if(_notifGeral && _notifGeral.length){
+    html+=`<div class="notif-sec">Fechamento de caixa</div>`;
+    html+=_notifGeral.map(nt=>`<button class="notif-item nova" onclick="_notifAbrirGeral(${nt.id})">
+      <span class="notif-ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="7" y1="13" x2="9" y2="13"/></svg></span>
+      <span><b>${fdEsc(nt.titulo||'Notificação')}</b><br><span class="notif-sub">${fdEsc(nt.mensagem||'')}</span></span></button>`).join('');
+  }
   const cs=_cmpNotifSplit();
   if(cs.pend.length){
     html+=`<div class="notif-sec">Comprovantes — a atender</div>`;
@@ -2774,7 +2966,7 @@ function renderNotifPanel(){
       <span>Comprovante disponível: <b>${(r.titulo_everest||r.fornecedor||'—')}</b><br><span class="notif-sub">${r.empresa_nome||''}</span></span></button>`).join('');
   }
   const clearBtn=document.getElementById('notifClear');
-  if(clearBtn) clearBtn.disabled = cs.resp.length===0;
+  if(clearBtn) clearBtn.disabled = (cs.resp.length===0 && (!_notifGeral || _notifGeral.length===0));
   if(!html) html=`<div class="notif-empty">Nenhuma notificação.</div>`;
   el.innerHTML=html;
 }
@@ -4491,6 +4683,283 @@ function renderEmprestimos(){
   window._calInit=initAll;
 })();
 
+/* ═══════════════════════════════════════════════════════════════════════
+   FECHAMENTO DE CAIXA · Relatório de Fechamento de Caixa Diário
+   - Financeiro / admin: veem o relatório (dados dos lançamentos).
+   - Demais grupos: veem o formulário de lançamento (grava no Supabase +
+     foto no Storage 'fechamento-fichas').
+   ═══════════════════════════════════════════════════════════════════════ */
+const FD_LOJAS = ['CP AS','CP AN','CP SIG','CP AC','NZ AS','NZ SIG','NZ AC','NZ GYN',
+  'CAJU LIMÃO AN','CAJU LIMÃO SIG','CAJU ITAIM - SP','RESPONSA',
+  'FOSTER 01','FOSTER 03','FOSTER 04','FOSTER 05'];
+
+function fdIsFin(){ const u=_currentUser; return !!u && (u.role==='admin' || u.grupo==='Financeiro'); }
+function fdMoney(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function fdFmtData(d){ if(!d) return ''; const p=String(d).slice(0,10).split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; }
+function fdEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fdParseValor(s){
+  if(typeof s!=='string') return Number(s)||0;
+  let t=s.replace(/[^\d,.-]/g,'').trim();
+  if(t.includes(',')) t=t.replace(/\./g,'').replace(',','.');
+  return parseFloat(t)||0;
+}
+
+let _fdRows=[];
+
+function fdOpen(){
+  const optL = FD_LOJAS.map(l=>`<option value="${fdEsc(l)}">${fdEsc(l)}</option>`).join('');
+  const selL=document.getElementById('fdLoja');     if(selL) selL.innerHTML='<option value="">Escolher</option>'+optL;
+  const selF=document.getElementById('fdFiltLoja');  if(selF) selF.innerHTML='<option value="">Todas as lojas</option>'+optL;
+
+  const fin=fdIsFin();
+  document.getElementById('fdFormWrap').style.display = fin?'none':'';
+  document.getElementById('fdRepWrap').style.display  = fin?'':'none';
+
+  if(fin){
+    const hoje=new Date();
+    const ini=new Date(hoje.getFullYear(),hoje.getMonth(),1);
+    const iso=d=>d.toLocaleDateString('en-CA'); // YYYY-MM-DD local
+    const fi=document.getElementById('fdFiltIni'), ff=document.getElementById('fdFiltFim');
+    if(fi && !fi.value) fi.value=iso(ini);
+    if(ff && !ff.value) ff.value=iso(hoje);
+    fdCarregarRelatorio();
+  }else{
+    // Data começa vazia — preenchimento obrigatório e consciente pelo usuário.
+    const r=document.getElementById('fdResp');  if(r && !r.value) r.value=_currentUser?.nome||'';
+    document.getElementById('fdOkMsg').style.display='none';
+  }
+}
+
+function fdClearErros(ids){
+  ids.forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.classList.remove('fi-err');
+    const lb=el.closest('.mft')?.querySelector('label'); if(lb) lb.classList.remove('lbl-err');
+  });
+}
+function fdMarcaErro(id){
+  const el=document.getElementById(id); if(!el) return;
+  el.classList.add('fi-err');
+  const lb=el.closest('.mft')?.querySelector('label'); if(lb) lb.classList.add('lbl-err');
+  const limpa=()=>{ el.classList.remove('fi-err'); if(lb) lb.classList.remove('lbl-err'); };
+  el.addEventListener('input', limpa, {once:true});
+  el.addEventListener('change', limpa, {once:true});
+  if(!fdMarcaErro._focado){ fdMarcaErro._focado=true; el.focus(); }
+}
+
+async function fdEnviar(){
+  const loja =document.getElementById('fdLoja').value;
+  const data =document.getElementById('fdData').value;
+  const valor=fdParseValor(document.getElementById('fdValor').value);
+  const resp =document.getElementById('fdResp').value.trim();
+  const obs  =document.getElementById('fdObs').value.trim();
+  const file =document.getElementById('fdFoto').files[0];
+  fdMarcaErro._focado=false;
+  fdClearErros(['fdLoja','fdData','fdValor','fdResp','fdFoto']);
+  const erros=[];
+  if(!loja)     erros.push(['fdLoja','Selecione a loja.']);
+  if(!data)     erros.push(['fdData','Informe a data de fechamento do caixa.']);
+  if(!(valor>0))erros.push(['fdValor','Informe um valor válido.']);
+  if(!resp)     erros.push(['fdResp','Informe o responsável.']);
+  if(!file)                              erros.push(['fdFoto','Anexe a foto da ficha de comprovação.']);
+  else if(!/^image\//.test(file.type))   erros.push(['fdFoto','A ficha deve ser uma imagem.']);
+  else if(file.size > 100*1024*1024)     erros.push(['fdFoto','Imagem acima de 100 MB.']);
+  if(erros.length){
+    erros.forEach(([id])=>fdMarcaErro(id));
+    toast(erros.length===1 ? erros[0][1] : 'Preencha os campos obrigatórios destacados.','er');
+    return;
+  }
+
+  const btn=document.getElementById('fdBtnEnviar'); const txt=btn.textContent;
+  btn.disabled=true; btn.textContent='Enviando...';
+  try{
+    const { data:{ user } } = await _SB.auth.getUser();
+    const uid=user.id;
+    const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+    const slug=loja.replace(/[^\w]+/g,'-');
+    const path=`${uid}/${data}_${slug}_${Date.now()}.${ext}`;
+    const up=await _SB.storage.from('fechamento-fichas').upload(path,file,{ upsert:false, contentType:file.type });
+    if(up.error) throw up.error;
+    const ins=await _SB.from('fechamento_diario').insert({
+      loja, data, valor, responsavel:resp, observacao:obs||null,
+      foto_path:path, created_by:uid, created_by_email:_currentUser?.email||user.email
+    });
+    if(ins.error) throw ins.error;
+    document.getElementById('fdValor').value='';
+    document.getElementById('fdObs').value='';
+    document.getElementById('fdFoto').value='';
+    document.getElementById('fdOkMsg').style.display='';
+    toast('Lançamento enviado.','ok');
+  }catch(e){ toast('Erro ao enviar: '+(e.message||e),'er'); }
+  finally{ btn.disabled=false; btn.textContent=txt; }
+}
+
+async function fdCarregarRelatorio(){
+  const ini =document.getElementById('fdFiltIni').value;
+  const fim =document.getElementById('fdFiltFim').value;
+  const loja=document.getElementById('fdFiltLoja').value;
+  let q=_SB.from('fechamento_diario').select('*')
+        .order('data',{ascending:false}).order('created_at',{ascending:false});
+  if(ini)  q=q.gte('data',ini);
+  if(fim)  q=q.lte('data',fim);
+  if(loja) q=q.eq('loja',loja);
+  const { data, error } = await q;
+  if(error){ toast('Erro ao carregar: '+error.message,'er'); return; }
+  _fdRows=data||[];
+
+  const total=_fdRows.reduce((s,r)=>s+Number(r.valor||0),0);
+  const nLojas=new Set(_fdRows.map(r=>r.loja)).size;
+  document.getElementById('fdKpiTotal').textContent=fdMoney(total);
+  document.getElementById('fdKpiSub').textContent=`${_fdRows.length} lançamento(s)`;
+  document.getElementById('fdKpiLojas').textContent=nLojas;
+  document.getElementById('fdKpiUlt').textContent=_fdRows.length?fdFmtData(_fdRows[0].data):'—';
+
+  const tb=document.getElementById('fdTbody');
+  if(!_fdRows.length){
+    tb.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--t2)">Nenhum lançamento no período.</td></tr>`;
+    return;
+  }
+  tb.innerHTML=_fdRows.map(r=>`<tr>
+    <td>${fdFmtData(r.data)}</td>
+    <td>${fdEsc(r.loja)}</td>
+    <td style="text-align:right;font-family:'DM Mono',monospace">${fdMoney(r.valor)}</td>
+    <td>${fdEsc(r.responsavel)}</td>
+    <td style="color:var(--t2)">${fdEsc(r.observacao||'')}</td>
+    <td style="text-align:center">${r.foto_path?`<button class="uz-iact" title="Ver ficha" onclick="fdVerFicha('${fdEsc(r.foto_path).replace(/'/g,"\\'")}')">ver</button>`:'—'}</td>
+    <td style="font-size:.7rem;color:var(--t3)">${fdEsc(r.created_by_email||'')}<br>${r.created_at?new Date(r.created_at).toLocaleString('pt-BR'):''}</td>
+    <td style="text-align:center"><button class="uz-iact" title="Editar lançamento" onclick="fdEditar(${r.id})">Editar</button></td>
+  </tr>`).join('');
+}
+
+async function fdVerFicha(path){
+  const box=document.getElementById('fdLightbox');
+  const img=document.getElementById('fdLbImg');
+  const load=document.getElementById('fdLbLoading');
+  const link=document.getElementById('fdLbOpen');
+  img.style.display='none'; load.style.display=''; load.textContent='Carregando ficha…';
+  box.style.display='flex';
+  try{
+    const { data, error } = await _SB.storage.from('fechamento-fichas').createSignedUrl(path,300);
+    if(error||!data?.signedUrl) throw error||new Error('sem URL');
+    link.href=data.signedUrl;
+    img.onload=()=>{ load.style.display='none'; img.style.display=''; };
+    img.onerror=()=>{ load.textContent='Não foi possível carregar a imagem.'; };
+    img.src=data.signedUrl;
+  }catch(e){ load.textContent='Não foi possível abrir a ficha.'; }
+}
+function fdFecharFicha(ev){
+  const box=document.getElementById('fdLightbox');
+  box.style.display='none';
+  const img=document.getElementById('fdLbImg'); img.src=''; img.style.display='none';
+}
+
+function fdEditar(id){
+  const r=_fdRows.find(x=>String(x.id)===String(id));
+  if(!r){ toast('Lançamento não encontrado.','er'); return; }
+  const sel=document.getElementById('fdELoja');
+  sel.innerHTML=FD_LOJAS.map(l=>`<option value="${fdEsc(l)}">${fdEsc(l)}</option>`).join('');
+  if(!FD_LOJAS.includes(r.loja)){ sel.insertAdjacentHTML('afterbegin',`<option value="${fdEsc(r.loja)}">${fdEsc(r.loja)}</option>`); }
+  sel.value=r.loja||'';
+  document.getElementById('fdEId').value=r.id;
+  document.getElementById('fdEData').value=String(r.data).slice(0,10);
+  document.getElementById('fdEValor').value=(Number(r.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  document.getElementById('fdEResp').value=r.responsavel||'';
+  document.getElementById('fdEObs').value=r.observacao||'';
+  document.getElementById('fdEFoto').value='';
+  document.getElementById('modFd').classList.add('op');
+}
+function fdFecharEdit(){ document.getElementById('modFd').classList.remove('op'); }
+
+async function fdSalvarEdit(){
+  const id=document.getElementById('fdEId').value;
+  const loja=document.getElementById('fdELoja').value;
+  const data=document.getElementById('fdEData').value;
+  const valor=fdParseValor(document.getElementById('fdEValor').value);
+  const resp=document.getElementById('fdEResp').value.trim();
+  const obs=document.getElementById('fdEObs').value.trim();
+  const file=document.getElementById('fdEFoto').files[0];
+  if(!loja){ toast('Selecione a loja.','er'); return; }
+  if(!data){ toast('Informe a data.','er'); return; }
+  if(!(valor>0)){ toast('Informe um valor válido.','er'); return; }
+  if(!resp){ toast('Informe o responsável.','er'); return; }
+  const btn=document.getElementById('fdEBtnSalvar'); const txt=btn.textContent;
+  btn.disabled=true; btn.textContent='Salvando...';
+  try{
+    const patch={ loja, data, valor, responsavel:resp, observacao:obs||null };
+    if(file){
+      if(!/^image\//.test(file.type)) throw new Error('A ficha deve ser uma imagem.');
+      if(file.size>100*1024*1024) throw new Error('Imagem acima de 100 MB.');
+      const { data:{ user } } = await _SB.auth.getUser();
+      const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+      const path=`${user.id}/${data}_${loja.replace(/[^\w]+/g,'-')}_${Date.now()}.${ext}`;
+      const up=await _SB.storage.from('fechamento-fichas').upload(path,file,{ upsert:false, contentType:file.type });
+      if(up.error) throw up.error;
+      patch.foto_path=path;
+    }
+    const upd=await _SB.from('fechamento_diario').update(patch).eq('id',id);
+    if(upd.error) throw upd.error;
+    fdFecharEdit();
+    toast('Lançamento atualizado.','ok');
+    fdCarregarRelatorio();
+  }catch(e){ toast('Erro ao salvar: '+(e.message||e),'er'); }
+  finally{ btn.disabled=false; btn.textContent=txt; }
+}
+
+async function fdExcluir(){
+  const id=document.getElementById('fdEId').value;
+  if(!id) return;
+  if(!confirm('Excluir este lançamento? Esta ação não pode ser desfeita.')) return;
+  try{
+    const del=await _SB.from('fechamento_diario').delete().eq('id',id);
+    if(del.error) throw del.error;
+    fdFecharEdit();
+    toast('Lançamento excluído.','ok');
+    fdCarregarRelatorio();
+  }catch(e){ toast('Erro ao excluir: '+(e.message||e),'er'); }
+}
+
+let _fdMapEmpresa = null;
+async function fdLoadMapEmpresa(){
+  if(_fdMapEmpresa) return _fdMapEmpresa;
+  _fdMapEmpresa = {};
+  try{
+    const { data } = await _SB.from('fechamento_loja_empresa').select('loja,empresa');
+    (data||[]).forEach(m=>{ _fdMapEmpresa[m.loja] = m.empresa; });
+  }catch(e){ /* mantém vazio → cai no fallback (código da loja) */ }
+  return _fdMapEmpresa;
+}
+
+async function fdExportar(){
+  if(typeof XLSX==='undefined'){ toast('Biblioteca de exportação não carregada.','er'); return; }
+  if(!_fdRows.length){ toast('Não há lançamentos para exportar.','er'); return; }
+  await fdLoadMapEmpresa();
+  // Mesmo layout do modelo: aba "1" com colunas fixas.
+  const header=['EMPRESA','DATA','VALOR BRUTO','HORA','STATUS','BANDEIRA','ADQUIRENTE'];
+  const rows=[..._fdRows].sort((a,b)=>String(a.data).localeCompare(String(b.data)));
+  const EXCEL_EPOCH=Date.UTC(1899,11,30);
+  const aoa=[header];
+  rows.forEach(r=>{
+    const p=String(r.data).slice(0,10).split('-').map(Number);
+    // Número de série do Excel (em UTC) — evita o deslocamento de 1 dia por fuso.
+    const serial=Math.round((Date.UTC(p[0],(p[1]||1)-1,p[2]||1)-EXCEL_EPOCH)/86400000);
+    // EMPRESA vem do De-Para (loja do formulário → empresa das contas); fallback: código da loja.
+    const empresa=(_fdMapEmpresa && _fdMapEmpresa[r.loja]) || r.loja || '';
+    aoa.push([ empresa, serial, Number(r.valor)||0, '', 'APROVADO', 'DINHEIRO', 'DINHEIRO' ]);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  const range=XLSX.utils.decode_range(ws['!ref']);
+  for(let R=1; R<=range.e.r; R++){
+    const c=ws[XLSX.utils.encode_cell({r:R,c:1})]; if(c){ c.t='n'; c.z='dd/mm/yyyy'; }  // coluna DATA
+  }
+  ws['!cols']=[{wch:18},{wch:12},{wch:13},{wch:8},{wch:12},{wch:12},{wch:12}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '1');
+  const ref=(document.getElementById('fdFiltFim').value
+          || document.getElementById('fdFiltIni').value
+          || new Date().toLocaleDateString('en-CA')).slice(0,7); // YYYY-MM
+  XLSX.writeFile(wb, `${ref} - DINHEIRO.xlsx`);
+}
+
 const pageRenders={
   dashboard:renderDash,
   contas:renderContas,
@@ -4500,15 +4969,16 @@ const pageRenders={
   importar:renderHist,
   emprestimos:renderEmprestimos,
   usuarios:renderUsuarios,
-  comprovantes:cmpOpen
+  comprovantes:cmpOpen,
+  fechamento_relatorio:fdOpen
 };
 
 /* ═══════════════════════════════════════════════════════════════════════
    COMPROVANTES — módulo nativo (Santander + Itaú)
-   Consome o proxy local (unified_app.py) em http://localhost:3000, que faz
+   Consome o proxy local (unified_app.py) em https://comprovante.financeirogrupocajupar.com/, que faz
    o OAuth + mTLS dos dois bancos e devolve os comprovantes já normalizados.
    ═══════════════════════════════════════════════════════════════════════ */
-let cmpProxyUrl = (function(){ try{ return localStorage.getItem('cmp_proxy') || 'http://localhost:3000'; }catch(e){ return 'http://localhost:3000'; } })();
+let cmpProxyUrl = (function(){ try{ return localStorage.getItem('cmp_proxy') || 'https://comprovante.financeirogrupocajupar.com/'; }catch(e){ return 'https://comprovante.financeirogrupocajupar.com/'; } })();
 const CMP_CATS = {
   'PIX':                   {l:'PIX',             i:'⚡', c:'#10B981'},
   'TED':                   {l:'TED',             i:'↗',  c:'#3B82F6'},
@@ -4521,7 +4991,7 @@ const CMP_CATS = {
 };
 let cmpData = [], cmpContas = [], cmpDrive = {}, cmpCat = '', cmpStarted = false, cmpEditingKey = '';
 let cmpRows = [], cmpPage = 1, cmpPerPage = 50;
-const cmpBase = () => (cmpProxyUrl || 'http://localhost:3000').replace(/\/+$/,'');
+const cmpBase = () => (cmpProxyUrl || 'https://comprovante.financeirogrupocajupar.com/').replace(/\/+$/,'');
 /* Token do usuário logado (Supabase) para autenticar no proxy.
    getSession() já renova o token automaticamente quando necessário. */
 async function cmpAuthHeaders(extra){
@@ -4780,7 +5250,7 @@ function cmpShowView(v){
 function cmpOpenCfg(){ document.getElementById('cmpCfgUrl').value = cmpProxyUrl; document.getElementById('cmpModCfg').classList.add('op'); }
 function cmpCloseCfg(){ document.getElementById('cmpModCfg').classList.remove('op'); }
 function cmpSaveCfg(){
-  const v = document.getElementById('cmpCfgUrl').value.trim() || 'http://localhost:3000';
+  const v = document.getElementById('cmpCfgUrl').value.trim() || 'https://comprovante.financeirogrupocajupar.com/';
   cmpProxyUrl = v;
   try{ localStorage.setItem('cmp_proxy', v); }catch(e){}
   cmpCloseCfg(); cmpCheckConn(); cmpLoadContas().then(cmpRenderContas);

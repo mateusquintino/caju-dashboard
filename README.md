@@ -13,8 +13,10 @@ O projeto tem duas partes:
 
 ```
 Fluxo de caixa/
-├── index.html                    ← entrada do site: redireciona p/ dashboard/ (GitHub Pages)
+├── index.html                    ← entrada do site: redireciona p/ dashboard/
+├── .htaccess                     ← config Apache do HostGator (HTTPS, cache, gzip)
 ├── README.md                     ← este arquivo
+├── GUIA-HOSTGATOR.md             ← passo a passo para publicar no HostGator
 ├── .gitignore
 │
 ├── dashboard/                    ← aplicação web (frontend)
@@ -53,3 +55,15 @@ No SQL Editor do Supabase, execute na ordem:
 3. `banco_de_dados/seeds/seed_contas.sql` (opcional — cadastro inicial de contas)
 
 O script `banco_de_dados/diagnosticos/diagnostico_contas.sql` ajuda a identificar contas com configuração incorreta.
+
+---
+
+## Publicação (HostGator)
+
+O site é publicado em **https://financeirogrupocajupar.com** (hospedagem
+HostGator, domínio raiz). O passo a passo completo — o que subir, para qual
+pasta e como configurar o login Google — está em **`GUIA-HOSTGATOR.md`**.
+
+Em resumo: sobem para o `public_html/` apenas o `index.html`, o `.htaccess`
+e a pasta `dashboard/`. As pastas `banco_de_dados/`, `docs/` e `arquivo/`
+**não** vão para o servidor.
