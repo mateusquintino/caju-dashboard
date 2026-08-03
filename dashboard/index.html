@@ -1079,6 +1079,10 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
           <span class="tico"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></span>
           <span class="tlbl">Recebimento em Dinheiro Diário</span>
         </button>
+        <button class="tab" data-p="fechamento_conferencia" title="Conferência de Depósito em Dinheiro">
+          <span class="tico"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+          <span class="tlbl">Conferência de Depósito em Dinheiro</span>
+        </button>
       </div>
     </div>
 
@@ -1166,8 +1170,13 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
       </button>
       <button class="hcard" data-p="fechamento_relatorio" onclick="irPara('fechamento_relatorio')">
         <span class="hcard-ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="7" y1="13" x2="9" y2="13"/><line x1="11" y1="13" x2="13" y2="13"/><line x1="15" y1="13" x2="17" y2="13"/><line x1="7" y1="16" x2="9" y2="16"/><line x1="11" y1="16" x2="13" y2="16"/></svg></span>
-        <span class="hcard-tit">Fechamento de caixa</span>
+        <span class="hcard-tit">Recebimento em Dinheiro Diário</span>
         <span class="hcard-desc">Recebimento em dinheiro diário por loja.</span>
+      </button>
+      <button class="hcard" data-p="fechamento_conferencia" onclick="irPara('fechamento_conferencia')">
+        <span class="hcard-ico"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+        <span class="hcard-tit">Conferência de Depósito em Dinheiro</span>
+        <span class="hcard-desc">Confira os depósitos em dinheiro por loja.</span>
       </button>
       <button class="hcard" data-p="usuarios" onclick="irPara('usuarios')">
         <span class="hcard-ico"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
@@ -1921,6 +1930,105 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
     </div>
   </section>
 
+  <!-- ══ FECHAMENTO DE CAIXA · CONFERÊNCIA DE DEPÓSITO ══ -->
+  <section class="page" id="page-fechamento_conferencia">
+    <div class="cpage-hdr">
+      <h2>Conferência de Depósito em Dinheiro</h2>
+    </div>
+
+    <!-- ── VISÃO FORMULÁRIO (demais grupos) ── -->
+    <div id="cdFormWrap" style="display:none">
+      <div class="shdr" style="margin-top:.2rem"><span class="stit">Conferência do depósito em dinheiro</span><span class="sln"></span></div>
+      <p style="font-size:.8rem;color:var(--t2);line-height:1.6;margin:-.4rem 0 1rem">Escolha a loja para carregar os dias de <b>Recebimento em Dinheiro</b> ainda não conferidos. Para cada dia mostramos a data e o valor recebido — informe ao lado o <b>valor depositado</b> e anexe o comprovante.</p>
+      <div class="kcard" style="padding:1.4rem 1.6rem;display:flex;flex-direction:column;gap:.9rem">
+        <div class="mft" style="max-width:420px"><label>Loja *</label><select class="fi2" id="cdLoja" onchange="cdCarregarPendentes()"><option value="">Escolher</option></select></div>
+        <div class="mft">
+          <label>Recebimentos a conferir — informe o valor depositado *</label>
+          <div style="display:flex;gap:.6rem;margin-bottom:4px">
+            <span style="flex:1;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--t3)">Data do recebimento</span>
+            <span title="Valor informado no fechamento do caixa" style="flex:1;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--t3)">Valor do fechamento</span>
+            <span style="flex:1;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--t3)">Valor depositado</span>
+            <span style="flex:1;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--t3)">Diferença</span>
+          </div>
+          <div id="cdLinhas" style="display:flex;flex-direction:column;gap:.5rem"></div>
+        </div>
+        <div class="mft"><label>Observação</label><input class="fi2" id="cdObs" placeholder="Opcional"/></div>
+        <div class="mft"><label>Comprovante do depósito *</label>
+          <input type="file" accept="image/*,application/pdf" id="cdFile" class="fi2" style="padding:7px 10px"/>
+          <span style="font-size:.68rem;color:var(--t3)">Imagem ou PDF, até 100 MB. Vale para os depósitos informados acima.</span>
+        </div>
+        <div class="mfo" style="border:0;padding:0;margin-top:.3rem">
+          <button class="bp" id="cdBtnEnviar" onclick="cdEnviar()">Enviar</button>
+        </div>
+      </div>
+      <div id="cdOkMsg" style="display:none;margin-top:1rem;padding:.8rem 1rem;border-radius:10px;background:rgba(16,185,129,.12);color:#10B981;font-size:.82rem;font-weight:600">✓ Depósito enviado com sucesso. Obrigado!</div>
+    </div>
+
+    <!-- ── VISÃO RELATÓRIO (Financeiro / admin) ── -->
+    <div id="cdRepWrap" style="display:none">
+      <div class="pbar">
+        <span class="plbl">De</span>
+        <input type="date" id="cdFiltIni" class="pdt"/>
+        <span class="plbl" style="margin-left:2px">Até</span>
+        <input type="date" id="cdFiltFim" class="pdt"/>
+        <span class="plbl" style="margin-left:.5rem">Loja</span>
+        <select class="fsel" id="cdFiltLoja" style="min-width:150px"><option value="">Todas as lojas</option></select>
+        <button class="bp" style="margin-left:auto" onclick="cdCarregarRelatorio()">Consultar</button>
+      </div>
+
+      <div class="kgrid">
+        <div class="kcard ktotal">
+          <div class="klbl">Total depositado no período</div>
+          <div class="kval" id="cdKpiTotal">R$ 0,00</div>
+          <div class="ksub" id="cdKpiSub">0 depósitos</div>
+          <div class="kgl"></div>
+        </div>
+        <div class="kcard">
+          <div class="klbl">Lojas com depósito</div>
+          <div class="kval" id="cdKpiLojas">0</div>
+          <div class="kbadge bg">no período</div>
+        </div>
+        <div class="kcard">
+          <div class="klbl">Depósito mais recente</div>
+          <div class="kval" id="cdKpiUlt" style="font-size:1.05rem">—</div>
+        </div>
+      </div>
+
+      <div class="shdr"><span class="stit">Depósitos</span><span class="sln"></span></div>
+      <div class="twrap">
+        <table class="dtbl" style="table-layout:auto">
+          <thead><tr>
+            <th>Data</th>
+            <th>Loja</th>
+            <th style="text-align:right" title="Valor informado no fechamento do caixa">Fechamento</th>
+            <th style="text-align:right">Depositado</th>
+            <th style="text-align:right">Diferença</th>
+            <th>Observação</th>
+            <th style="text-align:center">Comprovante</th>
+            <th>Registrado por</th>
+            <th style="text-align:center">Ações</th>
+          </tr></thead>
+          <tbody id="cdTbody"></tbody>
+        </table>
+      </div>
+
+      <div class="shdr" style="margin-top:1.4rem"><span class="stit">Confronto com o extrato — depósito em dinheiro (Santander)</span><span class="sln"></span></div>
+      <p style="font-size:.78rem;color:var(--t2);line-height:1.6;margin:-.2rem 0 .8rem">Compara, por loja, o total informado como depositado no período com os créditos de <b>depósito em dinheiro</b> que caíram na conta Santander. Como os depósitos são feitos às segundas e quintas (juntando vários dias), a batida é pela soma, com janela de até 5 dias após o fim do período. Atualiza sozinho conforme os OFX são importados.</p>
+      <div class="twrap">
+        <table class="dtbl" style="table-layout:auto">
+          <thead><tr>
+            <th>Loja</th>
+            <th style="text-align:right">Informado (depositado)</th>
+            <th style="text-align:right">Caiu no banco</th>
+            <th style="text-align:right">Diferença</th>
+            <th style="text-align:center">Confirmado</th>
+          </tr></thead>
+          <tbody id="cdBancoTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <!-- LIGHTBOX FICHA (Recebimento em Dinheiro Diário) -->
@@ -1968,6 +2076,37 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
       <button class="bs" style="margin-right:auto;color:#EF4444;border-color:rgba(239,68,68,.4)" onclick="fdExcluir()">Excluir</button>
       <button class="bs" onclick="fdFecharEdit()">Cancelar</button>
       <button class="bp" id="fdEBtnSalvar" onclick="fdSalvarEdit()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR DEPÓSITO -->
+<div class="mov" id="modCd">
+  <div class="mod">
+    <div class="mhd">
+      <h3>Editar depósito</h3>
+      <button class="mcl" onclick="cdFecharEdit()">✕</button>
+    </div>
+    <div class="mbd">
+      <input type="hidden" id="cdEId"/>
+      <div class="mfr">
+        <div class="mft"><label>Loja *</label><select class="fi2" id="cdELoja"></select></div>
+        <div class="mft"><label>Data do depósito *</label><input type="date" class="fi2" id="cdEData"/></div>
+      </div>
+      <div class="mfr">
+        <div class="mft"><label title="Valor informado no fechamento do caixa">Valor do fechamento</label><input class="fi2" id="cdEValorRec" readonly style="opacity:.7"/></div>
+        <div class="mft"><label>Valor depositado *</label><input class="fi2" id="cdEValor" inputmode="decimal"/></div>
+      </div>
+      <div class="mft"><label>Observação</label><input class="fi2" id="cdEObs" placeholder="Opcional"/></div>
+      <div class="mft"><label>Trocar comprovante (opcional)</label>
+        <input type="file" accept="image/*,application/pdf" class="fi2" id="cdEFile" style="padding:7px 10px"/>
+        <span style="font-size:.68rem;color:var(--t3)">Deixe em branco para manter o comprovante atual.</span>
+      </div>
+    </div>
+    <div class="mfo">
+      <button class="bs" style="margin-right:auto;color:#EF4444;border-color:rgba(239,68,68,.4)" onclick="cdExcluir()">Excluir</button>
+      <button class="bs" onclick="cdFecharEdit()">Cancelar</button>
+      <button class="bp" id="cdEBtnSalvar" onclick="cdSalvarEdit()">Salvar</button>
     </div>
   </div>
 </div>
@@ -2571,6 +2710,7 @@ let UZ_MODULOS = [
   {nome:'Comprovantes',        chave:'comprovantes'},
   {nome:'Empréstimos',         chave:'emprestimos'},
   {nome:'Recebimento em Dinheiro Diário', chave:'fechamento_relatorio'},
+  {nome:'Conferência de Depósito em Dinheiro', chave:'fechamento_conferencia'},
   {nome:'Usuários',            chave:'usuarios'},
 ];
 let _uzModulosCarregado = false;
@@ -4693,6 +4833,28 @@ const FD_LOJAS = ['CP AS','CP AN','CP SIG','CP AC','NZ AS','NZ SIG','NZ AC','NZ 
   'CAJU LIMÃO AN','CAJU LIMÃO SIG','CAJU ITAIM - SP','RESPONSA',
   'FOSTER 01','FOSTER 03','FOSTER 04','FOSTER 05'];
 
+// De-Para SOMENTE para exibição (dropdowns/tela). O valor gravado e a exportação
+// continuam usando o código da loja acima (CP AN, MULT 05 etc.).
+const FD_LOJA_NOME = {
+  'CP AS':'Caminito Parrilla - Asa Sul',
+  'CP AN':'Caminito Parrilla - Asa Norte',
+  'CP SIG':'Caminito Parrilla - Sudoeste',
+  'CP AC':'Caminito Parrilla - Águas Claras',
+  'NZ AS':'Nazo Japanese Food - Asa Sul',
+  'NZ AC':'Nazo Japanese Food - Águas Claras',
+  'NZ SIG':'Nazo Japanese Food - Sudoeste',
+  'NZ GYN':'Nazo Japanese Food - Goiânia',
+  'CAJU LIMÃO AN':'Boteco Caju Limão - Asa Norte',
+  'CAJU LIMÃO SIG':'Boteco Caju Limão - Sudoeste',
+  'CAJU ITAIM - SP':'Boteco Caju Limão - Itaim - SP',
+  'RESPONSA':'Bar Responsa',
+  'FOSTER 01':"Foster's Burger - Asa Sul",
+  'FOSTER 03':"Foster's Burger - Águas Claras",
+  'FOSTER 04':"Foster's Burger - Sudoeste",
+  'FOSTER 05':"Foster's Burger - Asa Norte"
+};
+function fdNomeLoja(cod){ return FD_LOJA_NOME[cod] || cod; }
+
 function fdIsFin(){ const u=_currentUser; return !!u && (u.role==='admin' || u.grupo==='Financeiro'); }
 function fdMoney(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 function fdFmtData(d){ if(!d) return ''; const p=String(d).slice(0,10).split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; }
@@ -4707,7 +4869,7 @@ function fdParseValor(s){
 let _fdRows=[];
 
 function fdOpen(){
-  const optL = FD_LOJAS.map(l=>`<option value="${fdEsc(l)}">${fdEsc(l)}</option>`).join('');
+  const optL = FD_LOJAS.map(l=>`<option value="${fdEsc(l)}">${fdEsc(fdNomeLoja(l))}</option>`).join('');
   const selL=document.getElementById('fdLoja');     if(selL) selL.innerHTML='<option value="">Escolher</option>'+optL;
   const selF=document.getElementById('fdFiltLoja');  if(selF) selF.innerHTML='<option value="">Todas as lojas</option>'+optL;
 
@@ -4821,7 +4983,7 @@ async function fdCarregarRelatorio(){
   }
   tb.innerHTML=_fdRows.map(r=>`<tr>
     <td>${fdFmtData(r.data)}</td>
-    <td>${fdEsc(r.loja)}</td>
+    <td>${fdEsc(fdNomeLoja(r.loja))}</td>
     <td style="text-align:right;font-family:'DM Mono',monospace">${fdMoney(r.valor)}</td>
     <td>${fdEsc(r.responsavel)}</td>
     <td style="color:var(--t2)">${fdEsc(r.observacao||'')}</td>
@@ -4857,8 +5019,8 @@ function fdEditar(id){
   const r=_fdRows.find(x=>String(x.id)===String(id));
   if(!r){ toast('Lançamento não encontrado.','er'); return; }
   const sel=document.getElementById('fdELoja');
-  sel.innerHTML=FD_LOJAS.map(l=>`<option value="${fdEsc(l)}">${fdEsc(l)}</option>`).join('');
-  if(!FD_LOJAS.includes(r.loja)){ sel.insertAdjacentHTML('afterbegin',`<option value="${fdEsc(r.loja)}">${fdEsc(r.loja)}</option>`); }
+  sel.innerHTML=FD_LOJAS.map(l=>`<option value="${fdEsc(l)}">${fdEsc(fdNomeLoja(l))}</option>`).join('');
+  if(!FD_LOJAS.includes(r.loja)){ sel.insertAdjacentHTML('afterbegin',`<option value="${fdEsc(r.loja)}">${fdEsc(fdNomeLoja(r.loja))}</option>`); }
   sel.value=r.loja||'';
   document.getElementById('fdEId').value=r.id;
   document.getElementById('fdEData').value=String(r.data).slice(0,10);
@@ -4960,6 +5122,367 @@ async function fdExportar(){
   XLSX.writeFile(wb, `${ref} - DINHEIRO.xlsx`);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   FECHAMENTO DE CAIXA · Conferência de Depósito em Dinheiro
+   - Demais grupos: formulário para informar o depósito (seg/qui) + comprovante.
+   - Financeiro / admin: relatório dos depósitos, com filtros e edição.
+   ═══════════════════════════════════════════════════════════════════════ */
+let _cdRows=[];
+
+function cdEhSegOuQui(dstr){
+  const p=String(dstr).slice(0,10).split('-').map(Number);
+  const dow=new Date(p[0],(p[1]||1)-1,p[2]||1).getDay(); // 0=dom ... 1=seg ... 4=qui
+  return dow===1 || dow===4;
+}
+
+function cdOpen(){
+  const optL = FD_LOJAS.map(l=>`<option value="${fdEsc(l)}">${fdEsc(fdNomeLoja(l))}</option>`).join('');
+  const selL=document.getElementById('cdLoja');     if(selL) selL.innerHTML='<option value="">Escolher</option>'+optL;
+  const selF=document.getElementById('cdFiltLoja');  if(selF) selF.innerHTML='<option value="">Todas as lojas</option>'+optL;
+
+  const fin=fdIsFin();
+  document.getElementById('cdFormWrap').style.display = fin?'none':'';
+  document.getElementById('cdRepWrap').style.display  = fin?'':'none';
+
+  if(fin){
+    const hoje=new Date();
+    const ini=new Date(hoje.getFullYear(),hoje.getMonth(),1);
+    const iso=d=>d.toLocaleDateString('en-CA');
+    const fi=document.getElementById('cdFiltIni'), ff=document.getElementById('cdFiltFim');
+    if(fi && !fi.value) fi.value=iso(ini);
+    if(ff && !ff.value) ff.value=iso(hoje);
+    cdCarregarRelatorio();
+  }else{
+    cdResetLinhas();
+    document.getElementById('cdOkMsg').style.display='none';
+  }
+}
+
+// Uma linha da conferência = um dia de recebimento ainda não conferido.
+// data e valor recebido vêm do Recebimento em Dinheiro (só leitura); o valor
+// depositado é o único campo editável.
+function cdLinhaHTML(data, recebido){
+  const dataBR=fdFmtData(data);
+  const recStr=fdMoney(recebido);
+  return `<div class="cd-linha" data-data="${fdEsc(data)}" data-recebido="${Number(recebido)||0}" style="display:flex;gap:.6rem;align-items:center">
+    <div class="fi2 cd-l-data" style="flex:1;display:flex;align-items:center;opacity:.85">${fdEsc(dataBR)}</div>
+    <div class="fi2 cd-l-recebido" style="flex:1;display:flex;align-items:center;justify-content:flex-end;font-family:'DM Mono',monospace;opacity:.85">${fdEsc(recStr)}</div>
+    <input class="fi2 cd-l-valor" inputmode="decimal" placeholder="R$ 0,00" style="flex:1" title="Valor depositado" oninput="cdCalcDif(this)"/>
+    <div class="fi2 cd-l-dif" style="flex:1;display:flex;align-items:center;justify-content:flex-end;font-family:'DM Mono',monospace;color:var(--t3)" title="Recebido − depositado">—</div>
+  </div>`;
+}
+// Diferença ao vivo por linha: recebido − depositado.
+// 0,00 (verde) = certinho; positivo (vermelho) = falta depositar; negativo (âmbar) = depositado a mais.
+function cdCalcDif(inp){
+  const linha=inp.closest('.cd-linha'); if(!linha) return;
+  const dif=linha.querySelector('.cd-l-dif'); if(!dif) return;
+  const rec=Number(linha.getAttribute('data-recebido'))||0;
+  if(!inp.value.trim()){ dif.textContent='—'; dif.style.color='var(--t3)'; return; }
+  const d=rec - fdParseValor(inp.value);
+  dif.textContent=fdMoney(d);
+  dif.style.color = (Math.abs(d)<0.005 ? '#10B981' : (d>0 ? '#EF4444' : '#F59E0B'));
+}
+function cdSetLinhasMsg(msg){
+  const box=document.getElementById('cdLinhas'); if(!box) return;
+  box.innerHTML=`<div style="padding:.7rem .2rem;color:var(--t3);font-size:.82rem">${fdEsc(msg)}</div>`;
+}
+function cdResetLinhas(){ cdSetLinhasMsg('Selecione a loja para carregar os recebimentos a conferir.'); }
+
+// Carrega os dias de recebimento (fechamento_diario) da loja que ainda não têm
+// depósito conferido (deposito_dinheiro com o mesmo data_deposito).
+async function cdCarregarPendentes(){
+  const box=document.getElementById('cdLinhas'); if(!box) return;
+  const loja=document.getElementById('cdLoja').value;
+  document.getElementById('cdOkMsg').style.display='none';
+  if(!loja){ cdResetLinhas(); return; }
+  box.innerHTML=`<div style="padding:.7rem .2rem;color:var(--t3);font-size:.82rem">Carregando recebimentos…</div>`;
+  try{
+    const [rec, dep] = await Promise.all([
+      _SB.from('fechamento_diario').select('data,valor').eq('loja',loja),
+      _SB.from('deposito_dinheiro').select('data_deposito').eq('loja',loja)
+    ]);
+    if(rec.error) throw rec.error;
+    if(dep.error) throw dep.error;
+    const somaRec={};
+    (rec.data||[]).forEach(r=>{ const d=String(r.data).slice(0,10); somaRec[d]=(somaRec[d]||0)+(Number(r.valor)||0); });
+    const conf=new Set((dep.data||[]).map(r=>String(r.data_deposito).slice(0,10)));
+    const pend=Object.keys(somaRec).filter(d=>!conf.has(d)).sort();
+    if(!pend.length){ cdSetLinhasMsg('Nenhum recebimento pendente de conferência para esta loja.'); return; }
+    box.innerHTML=pend.map(d=>cdLinhaHTML(d, somaRec[d])).join('');
+  }catch(e){ cdSetLinhasMsg('Erro ao carregar recebimentos: '+(e.message||e)); }
+}
+
+async function cdEnviar(){
+  const loja =document.getElementById('cdLoja').value;
+  const obs  =document.getElementById('cdObs').value.trim();
+  const file =document.getElementById('cdFile').files[0];
+  const linhas=[...document.querySelectorAll('#cdLinhas .cd-linha')];
+
+  // limpa marcações anteriores
+  const selLoja=document.getElementById('cdLoja'); selLoja.classList.remove('fi-err');
+  document.getElementById('cdFile').classList.remove('fi-err');
+  linhas.forEach(l=>l.querySelectorAll('.cd-l-valor').forEach(i=>i.classList.remove('fi-err')));
+
+  const itens=[]; let primeiroErro=null; const marca=(el)=>{ el.classList.add('fi-err'); if(!primeiroErro) primeiroErro=el; };
+  let algumMsg='';
+
+  if(!loja){ marca(selLoja); algumMsg='Selecione a loja.'; }
+
+  linhas.forEach(l=>{
+    const vi=l.querySelector('.cd-l-valor'); if(!vi) return;
+    if(!vi.value.trim()) return; // linha sem valor depositado → ignora
+    const v=fdParseValor(vi.value);
+    if(!(v>0)){ marca(vi); if(!algumMsg) algumMsg='Informe um valor válido.'; return; }
+    itens.push({ data:l.getAttribute('data-data'), valor:v, valor_recebido:Number(l.getAttribute('data-recebido'))||0 });
+  });
+
+  if(!itens.length && !algumMsg){ algumMsg='Informe o valor depositado em ao menos um recebimento.'; }
+
+  const fileEl=document.getElementById('cdFile');
+  if(!file){ marca(fileEl); if(!algumMsg) algumMsg='Anexe o comprovante do depósito.'; }
+  else if(!(/^image\//.test(file.type) || file.type==='application/pdf')){ marca(fileEl); if(!algumMsg) algumMsg='O comprovante deve ser imagem ou PDF.'; }
+  else if(file.size > 100*1024*1024){ marca(fileEl); if(!algumMsg) algumMsg='Arquivo acima de 100 MB.'; }
+
+  if(primeiroErro || !itens.length){
+    if(primeiroErro){ primeiroErro.focus();
+      const limpa=()=>primeiroErro.classList.remove('fi-err');
+      primeiroErro.addEventListener('input',limpa,{once:true});
+      primeiroErro.addEventListener('change',limpa,{once:true});
+    }
+    toast(algumMsg || 'Preencha os campos obrigatórios destacados.','er');
+    return;
+  }
+
+  const btn=document.getElementById('cdBtnEnviar'); const txt=btn.textContent;
+  btn.disabled=true; btn.textContent='Enviando...';
+  try{
+    const { data:{ user } } = await _SB.auth.getUser();
+    const uid=user.id, email=_currentUser?.email||user.email;
+    const ext=(file.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'')||'bin';
+    const path=`${uid}/${loja.replace(/[^\w]+/g,'-')}_${Date.now()}.${ext}`;
+    const up=await _SB.storage.from('deposito-comprovantes').upload(path,file,{ upsert:false, contentType:file.type });
+    if(up.error) throw up.error;
+    // Um registro por dia de recebimento conferido, todos com o mesmo comprovante.
+    const rows=itens.map(it=>({ loja, data_deposito:it.data, valor:it.valor, valor_recebido:it.valor_recebido, observacao:obs||null, comprovante_path:path, created_by:uid, created_by_email:email }));
+    const ins=await _SB.from('deposito_dinheiro').insert(rows);
+    if(ins.error) throw ins.error;
+    document.getElementById('cdObs').value='';
+    document.getElementById('cdFile').value='';
+    await cdCarregarPendentes(); // os dias conferidos saem da lista
+    const okMsg=document.getElementById('cdOkMsg');
+    okMsg.textContent = `✓ ${rows.length} depósito(s) conferido(s) com sucesso. Obrigado!`;
+    okMsg.style.display='';
+    toast('Depósito(s) enviado(s).','ok');
+  }catch(e){ toast('Erro ao enviar: '+(e.message||e),'er'); }
+  finally{ btn.disabled=false; btn.textContent=txt; }
+}
+
+async function cdCarregarRelatorio(){
+  const ini =document.getElementById('cdFiltIni').value;
+  const fim =document.getElementById('cdFiltFim').value;
+  const loja=document.getElementById('cdFiltLoja').value;
+  let q=_SB.from('deposito_dinheiro').select('*')
+        .order('data_deposito',{ascending:false}).order('created_at',{ascending:false});
+  if(ini)  q=q.gte('data_deposito',ini);
+  if(fim)  q=q.lte('data_deposito',fim);
+  if(loja) q=q.eq('loja',loja);
+  const { data, error } = await q;
+  if(error){ toast('Erro ao carregar: '+error.message,'er'); return; }
+  _cdRows=data||[];
+
+  const total=_cdRows.reduce((s,r)=>s+Number(r.valor||0),0);
+  const nLojas=new Set(_cdRows.map(r=>r.loja)).size;
+  document.getElementById('cdKpiTotal').textContent=fdMoney(total);
+  document.getElementById('cdKpiSub').textContent=`${_cdRows.length} depósito(s)`;
+  document.getElementById('cdKpiLojas').textContent=nLojas;
+  document.getElementById('cdKpiUlt').textContent=_cdRows.length?fdFmtData(_cdRows[0].data_deposito):'—';
+
+  const tb=document.getElementById('cdTbody');
+  if(!_cdRows.length){
+    tb.innerHTML=`<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--t2)">Nenhum depósito no período.</td></tr>`;
+    const bt=document.getElementById('cdBancoTbody'); if(bt) bt.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:1.4rem;color:var(--t3)">Sem depósitos para confrontar.</td></tr>`;
+    return;
+  }
+  tb.innerHTML=_cdRows.map(r=>{
+    const rec = (r.valor_recebido==null ? null : Number(r.valor_recebido));
+    const dep = Number(r.valor)||0;
+    const dif = (rec==null ? null : rec - dep);
+    // recebido − depositado: >0 falta depositar (vermelho); ≈0 ok (verde); <0 depositado a mais (âmbar)
+    const difCor = (dif==null ? 'var(--t3)' : (Math.abs(dif)<0.005 ? '#10B981' : (dif>0 ? '#EF4444' : '#F59E0B')));
+    return `<tr>
+    <td>${fdFmtData(r.data_deposito)}</td>
+    <td>${fdEsc(fdNomeLoja(r.loja))}</td>
+    <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--t2)">${rec==null?'—':fdMoney(rec)}</td>
+    <td style="text-align:right;font-family:'DM Mono',monospace">${fdMoney(dep)}</td>
+    <td style="text-align:right;font-family:'DM Mono',monospace;color:${difCor}">${dif==null?'—':fdMoney(dif)}</td>
+    <td style="color:var(--t2)">${fdEsc(r.observacao||'')}</td>
+    <td style="text-align:center">${r.comprovante_path?`<button class="uz-iact" title="Ver comprovante" onclick="cdVerComprovante('${fdEsc(r.comprovante_path).replace(/'/g,"\\'")}')">ver</button>`:'—'}</td>
+    <td style="font-size:.7rem;color:var(--t3)">${fdEsc(r.created_by_email||'')}<br>${r.created_at?new Date(r.created_at).toLocaleString('pt-BR'):''}</td>
+    <td style="text-align:center"><button class="uz-iact" title="Editar depósito" onclick="cdEditar(${r.id})">Editar</button></td>
+  </tr>`;
+  }).join('');
+  cdConferirBanco(ini, fim);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CONFRONTO COM O EXTRATO — depósito em dinheiro (Santander)
+   Liga a loja à conta Santander (loja → empresa/código → contas.loja) e soma
+   os créditos "DEP DINHEIRO" do período (+5 dias) para conferir com o total
+   informado como depositado. Recalculado ao vivo — sem gravar nada.
+   ═══════════════════════════════════════════════════════════════════════ */
+let _cdContasSant=null; // { <código em contas.loja> : [conta_id, ...] } — só Santander
+async function cdLoadContasSant(){
+  if(_cdContasSant) return _cdContasSant;
+  _cdContasSant={};
+  try{
+    const { data } = await _SB.from('contas').select('id,loja,banco').ilike('banco','%santander%');
+    (data||[]).forEach(c=>{ const k=(c.loja||'').trim(); if(!k) return; (_cdContasSant[k]=_cdContasSant[k]||[]).push(c.id); });
+  }catch(e){ /* mantém vazio → mostra "conta não localizada" */ }
+  return _cdContasSant;
+}
+function cdAddDias(iso, n){
+  const p=String(iso).slice(0,10).split('-').map(Number);
+  const d=new Date(Date.UTC(p[0],(p[1]||1)-1,p[2]||1));
+  d.setUTCDate(d.getUTCDate()+n);
+  return d.toISOString().slice(0,10);
+}
+async function cdConferirBanco(ini, fim){
+  const tb=document.getElementById('cdBancoTbody'); if(!tb) return;
+  tb.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:1.2rem;color:var(--t3)">Confrontando com o extrato…</td></tr>`;
+  try{
+    await fdLoadMapEmpresa();                 // loja → empresa (código)
+    const contasSant=await cdLoadContasSant();
+
+    const infoPorLoja={};
+    _cdRows.forEach(r=>{ infoPorLoja[r.loja]=(infoPorLoja[r.loja]||0)+(Number(r.valor)||0); });
+    const lojas=Object.keys(infoPorLoja).sort();
+
+    const contaIdsPorLoja={}; const todosIds=new Set();
+    lojas.forEach(loja=>{
+      const emp=((_fdMapEmpresa && _fdMapEmpresa[loja]) || loja || '').trim();
+      const ids=contasSant[emp]||[];
+      contaIdsPorLoja[loja]=ids; ids.forEach(id=>todosIds.add(id));
+    });
+
+    const fimExt = fim ? cdAddDias(fim,5) : null;
+    let creditos=[];
+    if(todosIds.size){
+      let q=_SB.from('transacoes_santander').select('conta_id,data,valor')
+              .in('conta_id',[...todosIds]).eq('tipo','receita').ilike('descricao','DEP DINHEIRO%');
+      if(ini)    q=q.gte('data',ini);
+      if(fimExt) q=q.lte('data',fimExt);
+      const { data, error } = await q;
+      if(error) throw error;
+      creditos=data||[];
+    }
+    const somaPorConta={};
+    creditos.forEach(t=>{ somaPorConta[t.conta_id]=(somaPorConta[t.conta_id]||0)+(Number(t.valor)||0); });
+
+    tb.innerHTML=lojas.map(loja=>{
+      const info=infoPorLoja[loja]||0;
+      const ids=contaIdsPorLoja[loja]||[];
+      const semConta=!ids.length;
+      const banco=ids.reduce((s,id)=>s+(somaPorConta[id]||0),0);
+      const dif=info-banco;                     // >0 falta cair; <0 caiu a mais
+      const ok=!semConta && Math.abs(dif)<0.005;
+      const cor=semConta?'var(--t3)':(ok?'#10B981':(dif>0?'#EF4444':'#F59E0B'));
+      const status=semConta
+        ? `<span style="color:var(--t3)">conta não localizada</span>`
+        : (ok ? `<span style="color:#10B981;font-weight:700">✓ OK</span>`
+              : (dif>0 ? `<span style="color:#EF4444;font-weight:700">falta cair</span>`
+                       : `<span style="color:#F59E0B;font-weight:700">caiu a mais</span>`));
+      return `<tr>
+        <td>${fdEsc(fdNomeLoja(loja))}</td>
+        <td style="text-align:right;font-family:'DM Mono',monospace">${fdMoney(info)}</td>
+        <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--t2)">${semConta?'—':fdMoney(banco)}</td>
+        <td style="text-align:right;font-family:'DM Mono',monospace;color:${cor}">${semConta?'—':fdMoney(dif)}</td>
+        <td style="text-align:center">${status}</td>
+      </tr>`;
+    }).join('');
+  }catch(e){
+    tb.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:1.2rem;color:#EF4444">Erro ao confrontar com o extrato: ${fdEsc(e.message||String(e))}</td></tr>`;
+  }
+}
+
+async function cdVerComprovante(path){
+  try{
+    const { data, error } = await _SB.storage.from('deposito-comprovantes').createSignedUrl(path,300);
+    if(error||!data?.signedUrl) throw error||new Error('sem URL');
+    if(/\.pdf$/i.test(path)){ window.open(data.signedUrl,'_blank'); return; }
+    // imagem → abre no mesmo pop-up (lightbox) usado nas fichas
+    const box=document.getElementById('fdLightbox'), img=document.getElementById('fdLbImg'),
+          load=document.getElementById('fdLbLoading'), link=document.getElementById('fdLbOpen');
+    img.style.display='none'; load.style.display=''; load.textContent='Carregando comprovante…';
+    link.href=data.signedUrl; box.style.display='flex';
+    img.onload=()=>{ load.style.display='none'; img.style.display=''; };
+    img.onerror=()=>{ load.textContent='Não foi possível carregar a imagem.'; };
+    img.src=data.signedUrl;
+  }catch(e){ toast('Não foi possível abrir o comprovante.','er'); }
+}
+
+function cdEditar(id){
+  const r=_cdRows.find(x=>String(x.id)===String(id));
+  if(!r){ toast('Depósito não encontrado.','er'); return; }
+  const sel=document.getElementById('cdELoja');
+  sel.innerHTML=FD_LOJAS.map(l=>`<option value="${fdEsc(l)}">${fdEsc(fdNomeLoja(l))}</option>`).join('');
+  if(!FD_LOJAS.includes(r.loja)){ sel.insertAdjacentHTML('afterbegin',`<option value="${fdEsc(r.loja)}">${fdEsc(fdNomeLoja(r.loja))}</option>`); }
+  sel.value=r.loja||'';
+  document.getElementById('cdEId').value=r.id;
+  document.getElementById('cdEData').value=String(r.data_deposito).slice(0,10);
+  document.getElementById('cdEValorRec').value=(r.valor_recebido==null?'—':fdMoney(Number(r.valor_recebido)));
+  document.getElementById('cdEValor').value=(Number(r.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  document.getElementById('cdEObs').value=r.observacao||'';
+  document.getElementById('cdEFile').value='';
+  document.getElementById('modCd').classList.add('op');
+}
+function cdFecharEdit(){ document.getElementById('modCd').classList.remove('op'); }
+
+async function cdSalvarEdit(){
+  const id=document.getElementById('cdEId').value;
+  const loja=document.getElementById('cdELoja').value;
+  const data=document.getElementById('cdEData').value;
+  const valor=fdParseValor(document.getElementById('cdEValor').value);
+  const obs=document.getElementById('cdEObs').value.trim();
+  const file=document.getElementById('cdEFile').files[0];
+  if(!loja){ toast('Selecione a loja.','er'); return; }
+  if(!data){ toast('Informe a data do depósito.','er'); return; }
+  if(!(valor>0)){ toast('Informe um valor válido.','er'); return; }
+  const btn=document.getElementById('cdEBtnSalvar'); const txt=btn.textContent;
+  btn.disabled=true; btn.textContent='Salvando...';
+  try{
+    const patch={ loja, data_deposito:data, valor, observacao:obs||null };
+    if(file){
+      if(!(/^image\//.test(file.type) || file.type==='application/pdf')) throw new Error('O comprovante deve ser imagem ou PDF.');
+      if(file.size>100*1024*1024) throw new Error('Arquivo acima de 100 MB.');
+      const { data:{ user } } = await _SB.auth.getUser();
+      const ext=(file.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'')||'bin';
+      const path=`${user.id}/${data}_${loja.replace(/[^\w]+/g,'-')}_${Date.now()}.${ext}`;
+      const up=await _SB.storage.from('deposito-comprovantes').upload(path,file,{ upsert:false, contentType:file.type });
+      if(up.error) throw up.error;
+      patch.comprovante_path=path;
+    }
+    const upd=await _SB.from('deposito_dinheiro').update(patch).eq('id',id);
+    if(upd.error) throw upd.error;
+    cdFecharEdit();
+    toast('Depósito atualizado.','ok');
+    cdCarregarRelatorio();
+  }catch(e){ toast('Erro ao salvar: '+(e.message||e),'er'); }
+  finally{ btn.disabled=false; btn.textContent=txt; }
+}
+
+async function cdExcluir(){
+  const id=document.getElementById('cdEId').value;
+  if(!id) return;
+  if(!confirm('Excluir este depósito? Esta ação não pode ser desfeita.')) return;
+  try{
+    const del=await _SB.from('deposito_dinheiro').delete().eq('id',id);
+    if(del.error) throw del.error;
+    cdFecharEdit();
+    toast('Depósito excluído.','ok');
+    cdCarregarRelatorio();
+  }catch(e){ toast('Erro ao excluir: '+(e.message||e),'er'); }
+}
+
 const pageRenders={
   dashboard:renderDash,
   contas:renderContas,
@@ -4970,7 +5493,8 @@ const pageRenders={
   emprestimos:renderEmprestimos,
   usuarios:renderUsuarios,
   comprovantes:cmpOpen,
-  fechamento_relatorio:fdOpen
+  fechamento_relatorio:fdOpen,
+  fechamento_conferencia:cdOpen
 };
 
 /* ═══════════════════════════════════════════════════════════════════════
