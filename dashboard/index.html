@@ -1868,7 +1868,8 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
         </div>
         <div class="mft"><label>Observação</label><input class="fi2" id="fdObs" placeholder="Opcional"/></div>
         <div class="mft"><label>Foto da ficha de comprovação *</label>
-          <input type="file" accept="image/*" id="fdFoto" class="fi2" style="padding:7px 10px"/>
+          <div class="camrow"><input type="file" accept="image/*" id="fdFoto" class="fi2" style="padding:7px 10px;flex:1;min-width:0"/><button type="button" class="btncam" onclick="document.getElementById('fdFotoCam').click()">📷 Tirar foto</button></div>
+          <input type="file" accept="image/*" capture="environment" id="fdFotoCam" style="display:none"/>
           <span style="font-size:.68rem;color:var(--t3)">1 imagem (JPG/PNG), até 100 MB.</span>
         </div>
         <div class="mfo" style="border:0;padding:0;margin-top:.3rem">
@@ -1955,7 +1956,8 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
         </div>
         <div class="mft"><label id="cdObsLbl">Observação</label><input class="fi2" id="cdObs" placeholder="Opcional — obrigatória se houver divergência"/></div>
         <div class="mft"><label>Comprovante do depósito *</label>
-          <input type="file" accept="image/*,application/pdf" id="cdFile" class="fi2" style="padding:7px 10px"/>
+          <div class="camrow"><input type="file" accept="image/*,application/pdf" id="cdFile" class="fi2" style="padding:7px 10px;flex:1;min-width:0"/><button type="button" class="btncam" onclick="document.getElementById('cdFileCam').click()">📷 Tirar foto</button></div>
+          <input type="file" accept="image/*" capture="environment" id="cdFileCam" style="display:none"/>
           <span style="font-size:.68rem;color:var(--t3)">Imagem ou PDF, até 100 MB. Vale para os depósitos informados acima.</span>
         </div>
         <div class="mfo" style="border:0;padding:0;margin-top:.3rem">
@@ -2069,7 +2071,8 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
       </div>
       <div class="mft"><label>Observação</label><input class="fi2" id="fdEObs" placeholder="Opcional"/></div>
       <div class="mft"><label>Trocar foto da ficha (opcional)</label>
-        <input type="file" accept="image/*" class="fi2" id="fdEFoto" style="padding:7px 10px"/>
+        <div class="camrow"><input type="file" accept="image/*" class="fi2" id="fdEFoto" style="padding:7px 10px;flex:1;min-width:0"/><button type="button" class="btncam" onclick="document.getElementById('fdEFotoCam').click()">📷 Tirar foto</button></div>
+        <input type="file" accept="image/*" capture="environment" id="fdEFotoCam" style="display:none"/>
         <span style="font-size:.68rem;color:var(--t3)">Deixe em branco para manter a ficha atual.</span>
       </div>
     </div>
@@ -2100,7 +2103,8 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
       </div>
       <div class="mft"><label>Observação</label><input class="fi2" id="cdEObs" placeholder="Opcional"/></div>
       <div class="mft"><label>Trocar comprovante (opcional)</label>
-        <input type="file" accept="image/*,application/pdf" class="fi2" id="cdEFile" style="padding:7px 10px"/>
+        <div class="camrow"><input type="file" accept="image/*,application/pdf" class="fi2" id="cdEFile" style="padding:7px 10px;flex:1;min-width:0"/><button type="button" class="btncam" onclick="document.getElementById('cdEFileCam').click()">📷 Tirar foto</button></div>
+        <input type="file" accept="image/*" capture="environment" id="cdEFileCam" style="display:none"/>
         <span style="font-size:.68rem;color:var(--t3)">Deixe em branco para manter o comprovante atual.</span>
       </div>
     </div>
@@ -6392,5 +6396,31 @@ document.querySelectorAll('.twrap').forEach(tw=>{
 
 </script>
 <script src="mobile-caju.js" defer></script>
+<style>
+.camrow{display:flex;gap:.5rem;align-items:center}
+.btncam{display:none;white-space:nowrap;cursor:pointer;padding:8px 12px;border-radius:10px;border:1px solid var(--bd,rgba(0,0,0,.15));background:var(--c2,#fff);color:var(--t1,#222);font-size:.8rem;font-weight:600;line-height:1}
+.btncam:active{opacity:.7}
+@media (hover:none) and (pointer:coarse){ .btncam{display:inline-flex} }
+</style>
+<script>
+(function(){
+  function bindCam(mainId, camId){
+    var m=document.getElementById(mainId), c=document.getElementById(camId);
+    if(!m||!c) return;
+    c.addEventListener('change', function(){
+      if(!c.files || !c.files[0]) return;
+      try{ var dt=new DataTransfer(); dt.items.add(c.files[0]); m.files=dt.files; }
+      catch(e){}
+      m.dispatchEvent(new Event('change',{bubbles:true}));
+    });
+  }
+  function init(){
+    [['fdFoto','fdFotoCam'],['cdFile','cdFileCam'],['fdEFoto','fdEFotoCam'],['cdEFile','cdEFileCam']]
+      .forEach(function(p){ bindCam(p[0],p[1]); });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
+  else init();
+})();
+</script>
 </body>
 </html>
