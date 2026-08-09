@@ -1,0 +1,213 @@
+/* ══════════════════════════════════════════════════════════════
+   CAJU · PATCH MOBILE  (≤768px)  — formato "app" (protótipo Caju Mobile)
+   Aditivo: nada acima de 768px é alterado. Carregue DEPOIS do CSS
+   principal do index.html.
+   ══════════════════════════════════════════════════════════════ */
+
+/* Elementos criados pelo JS só existem no mobile — escondidos no desktop */
+.cj-top,.mnav,.cj-bdrop,.cj-sheet{display:none}
+
+@media (max-width:768px){
+  .cj-top{display:block}
+  .cj-bdrop{display:block}
+  .cj-sheet{display:block}
+
+  /* blocos escondidos no mobile (não existem no protótipo) */
+  .cj-hide-mobile{display:none!important}
+
+  /* ── 0. BASE ──────────────────────────────────────────────── */
+  html{font-size:15px!important}
+
+  /* Sidebar (trilho) e hambúrguer somem: no mobile a navegação é
+     header no topo + barra inferior + bottom sheet "Mais". */
+  .hdr{display:none!important}
+  .menu-btn{display:none!important}
+  #menuBackdrop,.menu-backdrop{display:none!important}
+
+  /* Conteúdo usa a tela toda, com folga p/ header (topo) e nav (base) */
+  .main{
+    margin-left:0!important;
+    padding:calc(54px + env(safe-area-inset-top) + .7rem) .8rem
+            calc(86px + env(safe-area-inset-bottom))!important;
+  }
+
+  /* ── 1. HEADER (chrome) ───────────────────────────────────── */
+  .cj-top{
+    position:fixed;top:0;left:0;right:0;z-index:200;
+    padding-top:env(safe-area-inset-top);
+    background:var(--bg2);border-bottom:1px solid var(--bd)}
+  .cj-top-in{height:54px;display:flex;align-items:center;gap:10px;padding:0 12px}
+  .cj-logo{width:38px;height:38px;flex:none;border:none;background:none;padding:0;
+    cursor:pointer;display:grid;place-items:center;-webkit-tap-highlight-color:transparent}
+  .cj-logo svg{width:27px;height:27px;display:block}
+  .cj-ttl{min-width:0;flex:1;text-align:left}
+  .cj-ttl b{display:block;font-family:'Syne',sans-serif;font-size:15px;font-weight:800;
+    letter-spacing:-.01em;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15}
+  .cj-ttl span{display:block;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--t3);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .cj-ic{position:relative;width:44px;height:44px;flex:none;border:none;background:none;
+    color:var(--t2);cursor:pointer;display:grid;place-items:center;-webkit-tap-highlight-color:transparent}
+  .cj-ic svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .cj-ic.cj-theme{font-size:16px;color:var(--t2)}
+  .cj-badge{position:absolute;top:7px;right:7px;min-width:15px;height:15px;padding:0 4px;
+    background:var(--or1);color:#fff;border-radius:8px;font-family:'DM Mono',monospace;
+    font-size:9px;font-weight:700;display:grid;place-items:center;line-height:1}
+
+  /* ── 2. BARRA INFERIOR (nvb) ──────────────────────────────── */
+  .mnav{
+    position:fixed;left:0;right:0;bottom:0;z-index:200;
+    display:grid;grid-template-columns:repeat(5,1fr);gap:2px;
+    background:var(--bg2);border-top:1px solid var(--bd);
+    padding:6px 4px calc(14px + env(safe-area-inset-bottom))}
+  .mnav button{
+    min-height:52px;border:none;background:none;border-radius:12px;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    font-family:'Syne',sans-serif;font-size:.6rem;font-weight:700;color:var(--t3);
+    -webkit-tap-highlight-color:transparent;transition:color .18s,background .18s}
+  .mnav button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round}
+  .mnav button.on{color:var(--or1);background:var(--glow2)}
+
+  /* Header e nav somem nas telas de login/cadastro */
+  .auth-screen.on ~ .cj-top,
+  .auth-screen.on ~ .mnav,
+  .auth-screen.on ~ .cj-bdrop,
+  .auth-screen.on ~ .cj-sheet{display:none!important}
+
+  /* ── 3. BACKDROP + BOTTOM SHEETS ──────────────────────────── */
+  .cj-bdrop{
+    position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);
+    opacity:0;pointer-events:none;transition:opacity .28s ease}
+  .cj-bdrop.on{opacity:1;pointer-events:auto}
+  .cj-sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:410;
+    background:var(--bg2);border-top:1px solid var(--bd);border-radius:22px 22px 0 0;box-shadow:var(--sh2);
+    padding:10px 14px calc(26px + env(safe-area-inset-bottom));
+    max-height:86vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    transform:translateY(103%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+  .cj-sheet.on{transform:translateY(0)}
+  .cj-sheet::-webkit-scrollbar{display:none}
+  .cj-grab{width:38px;height:4px;border-radius:2px;background:var(--bd);margin:2px auto 12px}
+  .cj-sheet-hd{display:flex;align-items:center;margin-bottom:12px}
+  .cj-sheet-hd b{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--t1)}
+  .cj-sheet-x{margin-left:auto;width:38px;height:38px;border:none;background:none;color:var(--t3);
+    font-size:16px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+  /* módulos (sheet "Mais") */
+  .cj-mods{display:flex;flex-direction:column;gap:7px}
+  .cj-mod{display:flex;align-items:center;gap:12px;text-align:left;width:100%;min-height:52px;
+    background:var(--bg3);border:1px solid var(--bd);border-radius:12px;padding:9px 12px;cursor:pointer;
+    font-family:'Syne',sans-serif;color:var(--t1);-webkit-tap-highlight-color:transparent}
+  .cj-mod-ic{width:34px;height:34px;flex:none;border-radius:10px;background:var(--glow2);color:var(--or1);
+    display:grid;place-items:center}
+  .cj-mod-ic svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .cj-mod-t{font-size:13.5px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cj-mod-chev{color:var(--t3);font-size:16px;flex:none}
+
+  /* ── 4. FILTROS: chips no topo + sheet ────────────────────── */
+  .cj-filtbar{display:flex;align-items:center;gap:8px;width:100%;background:var(--bg2);
+    border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin-bottom:12px;cursor:pointer;
+    font-family:'Syne',sans-serif;min-height:46px;-webkit-tap-highlight-color:transparent}
+  .cj-filtbar-chips{display:flex;flex-wrap:wrap;gap:5px;flex:1;min-width:0}
+  .cj-chip{font-size:11px;font-weight:700;color:var(--t2);background:var(--bg3);border:1px solid var(--bd);
+    border-radius:999px;padding:4px 10px;white-space:nowrap}
+  .cj-chip.on{color:var(--or1);background:var(--glow2);border-color:rgba(232,67,10,.28)}
+  .cj-filtbar-ic{flex:none;color:var(--t3);display:flex}
+  .cj-filtbar-ic svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+  /* controles reais empilhados dentro do sheet */
+  .cj-sheet .pbar,.cj-sheet .mov-filters{display:grid!important;grid-template-columns:1fr!important;
+    gap:9px!important;margin:0!important}
+  .cj-sheet .pbar>*,.cj-sheet .mov-filters>*{grid-column:auto!important;width:100%!important;
+    min-width:0!important;justify-self:stretch!important}
+  .cj-sheet .pbar select,.cj-sheet .pbar input,
+  .cj-sheet .mov-filters select,.cj-sheet .mov-filters input{min-height:46px!important;font-size:13.5px!important}
+  .cj-apply{margin-top:16px;width:100%;min-height:50px;border:none;border-radius:11px;
+    background:linear-gradient(135deg,var(--or1),var(--or2));color:#fff;font-family:'Syne',sans-serif;
+    font-size:14px;font-weight:700;cursor:pointer}
+
+  /* ── 5. NOTIFICAÇÕES vira bottom sheet ────────────────────── */
+  .notif-panel{
+    position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;
+    width:auto!important;max-width:none!important;max-height:78vh;
+    border-radius:22px 22px 0 0!important;padding:10px 14px calc(24px + env(safe-area-inset-bottom))!important;
+    z-index:410;box-shadow:var(--sh2);animation:none!important}
+  .notif-panel::before,.notif-panel::after{display:none!important}
+  .notif-list{max-height:60vh!important}
+
+  /* ── 6. KPIs / MARCAS ─────────────────────────────────────── */
+  .kgrid{grid-template-columns:1fr 1fr!important;gap:.55rem!important;margin-bottom:1.1rem!important}
+  .kcard{background:var(--bg2)!important;border:1px solid var(--bd)!important;border-radius:14px!important;padding:13px!important}
+  .kcard.ktotal{grid-column:1/-1!important;position:relative;overflow:hidden;
+    background:color-mix(in srgb,var(--or1) 5%,var(--bg2))!important;border-color:rgba(232,67,10,.18)!important}
+  .kcard.ktotal::after{content:'';position:absolute;bottom:-24px;right:-24px;width:120px;height:120px;
+    border-radius:50%;background:var(--glow);filter:blur(38px);pointer-events:none}
+  .kval{font-size:18px!important;font-family:'DM Mono',monospace!important;line-height:1!important;position:relative}
+  .ktotal .kval{font-size:30px!important;
+    background:linear-gradient(135deg,var(--or1),var(--or2));-webkit-background-clip:text;
+    background-clip:text;-webkit-text-fill-color:transparent}
+  .klbl{font-size:9.5px!important;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t3)!important}
+  .mgrid{grid-template-columns:1fr 1fr!important;gap:.5rem!important}
+
+  /* ── 7. GRÁFICOS ──────────────────────────────────────────── */
+  .chart-wrap{height:240px!important}
+
+  /* ── 8. TABELAS VIRAM CARDS (JS monta .m-cards) ───────────── */
+  .twrap.m-carded{display:none!important}
+  .m-cards{display:flex;flex-direction:column;gap:7px;margin-bottom:1.3rem}
+  .m-card{background:var(--bg2);border:1px solid var(--bd);border-radius:13px;overflow:hidden}
+  .m-card>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:11px;
+    padding:11px 13px;min-height:60px}
+  .m-card>summary::-webkit-details-marker{display:none}
+  .m-card-main{min-width:0;flex:1}
+  .m-card-t{display:block;font-size:12.8px;font-weight:700;color:var(--t1);
+    line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .m-card-s{display:block;font-family:'DM Mono',monospace;font-size:10px;color:var(--t3);
+    margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .m-card-v{flex:none;font-family:'DM Mono',monospace;font-size:13px;color:var(--t1);
+    white-space:nowrap;text-align:right}
+  .m-card-cv{flex:none;color:var(--t3);font-size:1rem;transition:transform .2s ease}
+  .m-card[open] .m-card-cv{transform:rotate(90deg)}
+  .m-card-body{border-top:1px solid var(--bd);padding:10px 13px;display:flex;flex-direction:column;gap:7px}
+  .m-row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:.76rem}
+  .m-row>span{color:var(--t2);flex:none;max-width:52%}
+  .m-row>b{font-family:'DM Mono',monospace;font-weight:400;color:var(--t1);text-align:right;min-width:0;overflow-wrap:anywhere}
+  .m-cards-empty{background:var(--bg2);border:1px dashed var(--bd);border-radius:13px;
+    padding:26px 16px;text-align:center;font-size:.78rem;color:var(--t3)}
+  /* tabelas com inputs/ações continuam tabela com scroll */
+  .twrap:not(.m-carded){overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .twrap:not(.m-carded) .dtbl{min-width:640px;font-size:.74rem}
+  .twrap:not(.m-carded) .dtbl thead th{font-size:.6rem;padding:8px 10px}
+  .twrap:not(.m-carded) .dtbl tbody td{font-size:.74rem;padding:9px 10px}
+
+  /* ── 9. MODAIS / TOAST ────────────────────────────────────── */
+  .mdl,.modal,.mbox{width:calc(100vw - 24px)!important;max-width:none!important;max-height:88vh!important;overflow-y:auto}
+  .mfo{flex-direction:column-reverse}
+  .mfo button{width:100%;justify-content:center;min-height:46px}
+  .tst{left:12px;right:12px;bottom:calc(94px + env(safe-area-inset-bottom));text-align:center;font-size:.8rem}
+  .imp-zones{grid-template-columns:1fr!important}
+  .usr-stats{flex-wrap:wrap}
+  .auth-card{padding:1.6rem 1.15rem!important}
+  .emp-cols{grid-template-columns:1fr!important}
+  button,.bp,.bs,.tab,.fsel{-webkit-tap-highlight-color:transparent}
+
+  /* ── 10. AÇÕES SÓ-DESKTOP ─────────────────────────────────── */
+  .m-desktop-only{background:var(--bg2);border:1px dashed var(--bd);border-radius:14px;
+    padding:26px 18px;text-align:center;font-size:.8rem;color:var(--t3);line-height:1.55}
+  .m-desktop-only b{color:var(--t1);display:block;font-size:.9rem;margin-bottom:6px}
+
+  /* ── 11. BANNER "ADICIONAR À TELA DE INÍCIO" ──────────────── */
+  .m-pwa{position:fixed;left:10px;right:10px;bottom:calc(94px + env(safe-area-inset-bottom));z-index:420;
+    display:flex;align-items:center;gap:11px;background:var(--bg2);border:1px solid var(--bd);
+    border-radius:14px;padding:12px 13px;box-shadow:var(--sh2)}
+  .m-pwa-txt{flex:1;min-width:0;font-size:.76rem;color:var(--t2);line-height:1.4}
+  .m-pwa-txt b{display:block;color:var(--t1);font-size:.82rem;margin-bottom:2px}
+  .m-pwa button{min-height:40px;padding:0 13px;border-radius:9px;border:none;background:var(--or1);
+    color:#fff;font-family:'Syne',sans-serif;font-size:.74rem;font-weight:700;cursor:pointer;flex:none}
+  .m-pwa .m-pwa-x{background:none;color:var(--t3);border:1px solid var(--bd);padding:0 10px}
+}
+
+@media (max-width:420px){
+  html{font-size:15px!important}
+  .kgrid,.mgrid{grid-template-columns:1fr 1fr!important}
+  .mnav button{font-size:.56rem}
+}

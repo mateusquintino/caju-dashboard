@@ -890,6 +890,7 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
 #modUser .mbd > *{width:100%;max-width:940px;margin-left:auto;margin-right:auto}
 #modUser .uz-emps{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));max-height:40vh}
 </style>
+  <link rel="stylesheet" href="mobile-caju.css">
 </head>
 <body>
 
@@ -1952,7 +1953,7 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
           </div>
           <div id="cdLinhas" style="display:flex;flex-direction:column;gap:.5rem"></div>
         </div>
-        <div class="mft"><label>Observação</label><input class="fi2" id="cdObs" placeholder="Opcional"/></div>
+        <div class="mft"><label id="cdObsLbl">Observação</label><input class="fi2" id="cdObs" placeholder="Opcional — obrigatória se houver divergência"/></div>
         <div class="mft"><label>Comprovante do depósito *</label>
           <input type="file" accept="image/*,application/pdf" id="cdFile" class="fi2" style="padding:7px 10px"/>
           <span style="font-size:.68rem;color:var(--t3)">Imagem ou PDF, até 100 MB. Vale para os depósitos informados acima.</span>
@@ -2013,7 +2014,7 @@ select.fi2{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:p
       </div>
 
       <div class="shdr" style="margin-top:1.4rem"><span class="stit">Confronto com o extrato — depósito em dinheiro (Santander)</span><span class="sln"></span></div>
-      <p style="font-size:.78rem;color:var(--t2);line-height:1.6;margin:-.2rem 0 .8rem">Compara, por loja, o total informado como depositado no período com os créditos de <b>depósito em dinheiro</b> que caíram na conta Santander. Como os depósitos são feitos às segundas e quintas (juntando vários dias), a batida é pela soma, com janela de até 5 dias após o fim do período. Atualiza sozinho conforme os OFX são importados.</p>
+      <p style="font-size:.78rem;color:var(--t2);line-height:1.6;margin:-.2rem 0 .8rem">Compara, por loja, apenas o <b>último depósito informado</b> com o <b>último crédito de depósito em dinheiro</b> que caiu na conta Santander no período (janela de até 5 dias após o fim). Não soma o período inteiro — confere só o lançamento mais recente de cada lado. A data de cada lançamento aparece abaixo do valor. Atualiza sozinho conforme os OFX são importados.</p>
       <div class="twrap">
         <table class="dtbl" style="table-layout:auto">
           <thead><tr>
@@ -5174,17 +5175,40 @@ function cdLinhaHTML(data, recebido){
 // Diferença ao vivo por linha: recebido − depositado.
 // 0,00 (verde) = certinho; positivo (vermelho) = falta depositar; negativo (âmbar) = depositado a mais.
 function cdCalcDif(inp){
-  const linha=inp.closest('.cd-linha'); if(!linha) return;
-  const dif=linha.querySelector('.cd-l-dif'); if(!dif) return;
-  const rec=Number(linha.getAttribute('data-recebido'))||0;
-  if(!inp.value.trim()){ dif.textContent='—'; dif.style.color='var(--t3)'; return; }
-  const d=rec - fdParseValor(inp.value);
-  dif.textContent=fdMoney(d);
-  dif.style.color = (Math.abs(d)<0.005 ? '#10B981' : (d>0 ? '#EF4444' : '#F59E0B'));
+  const linha=inp.closest('.cd-linha');
+  if(linha){
+    const dif=linha.querySelector('.cd-l-dif');
+    if(dif){
+      const rec=Number(linha.getAttribute('data-recebido'))||0;
+      if(!inp.value.trim()){ dif.textContent='—'; dif.style.color='var(--t3)'; }
+      else{
+        const d=rec - fdParseValor(inp.value);
+        dif.textContent=fdMoney(d);
+        dif.style.color = (Math.abs(d)<0.005 ? '#10B981' : (d>0 ? '#EF4444' : '#F59E0B'));
+      }
+    }
+  }
+  cdChecaDivergencia();
+}
+// Divergência = alguma linha com valor depositado ≠ valor do fechamento (|dif| ≥ 0,005).
+// Quando houver, a observação passa a ser obrigatória (marca "*" no rótulo e ajusta o placeholder).
+function cdChecaDivergencia(){
+  const linhas=[...document.querySelectorAll('#cdLinhas .cd-linha')];
+  const houve=linhas.some(l=>{
+    const vi=l.querySelector('.cd-l-valor'); if(!vi || !vi.value.trim()) return false;
+    const rec=Number(l.getAttribute('data-recebido'))||0;
+    return Math.abs(rec - fdParseValor(vi.value)) >= 0.005;
+  });
+  const lbl=document.getElementById('cdObsLbl');
+  const obs=document.getElementById('cdObs');
+  if(lbl) lbl.innerHTML = houve ? 'Observação <span style="color:#EF4444">*</span>' : 'Observação';
+  if(obs) obs.placeholder = houve ? 'Obrigatória — descreva o motivo da divergência' : 'Opcional — obrigatória se houver divergência';
+  return houve;
 }
 function cdSetLinhasMsg(msg){
   const box=document.getElementById('cdLinhas'); if(!box) return;
   box.innerHTML=`<div style="padding:.7rem .2rem;color:var(--t3);font-size:.82rem">${fdEsc(msg)}</div>`;
+  cdChecaDivergencia();
 }
 function cdResetLinhas(){ cdSetLinhasMsg('Selecione a loja para carregar os recebimentos a conferir.'); }
 
@@ -5209,6 +5233,7 @@ async function cdCarregarPendentes(){
     const pend=Object.keys(somaRec).filter(d=>!conf.has(d)).sort();
     if(!pend.length){ cdSetLinhasMsg('Nenhum recebimento pendente de conferência para esta loja.'); return; }
     box.innerHTML=pend.map(d=>cdLinhaHTML(d, somaRec[d])).join('');
+    cdChecaDivergencia();
   }catch(e){ cdSetLinhasMsg('Erro ao carregar recebimentos: '+(e.message||e)); }
 }
 
@@ -5221,6 +5246,7 @@ async function cdEnviar(){
   // limpa marcações anteriores
   const selLoja=document.getElementById('cdLoja'); selLoja.classList.remove('fi-err');
   document.getElementById('cdFile').classList.remove('fi-err');
+  const obsEl=document.getElementById('cdObs'); obsEl.classList.remove('fi-err');
   linhas.forEach(l=>l.querySelectorAll('.cd-l-valor').forEach(i=>i.classList.remove('fi-err')));
 
   const itens=[]; let primeiroErro=null; const marca=(el)=>{ el.classList.add('fi-err'); if(!primeiroErro) primeiroErro=el; };
@@ -5228,15 +5254,21 @@ async function cdEnviar(){
 
   if(!loja){ marca(selLoja); algumMsg='Selecione a loja.'; }
 
+  let houveDivergencia=false;
   linhas.forEach(l=>{
     const vi=l.querySelector('.cd-l-valor'); if(!vi) return;
     if(!vi.value.trim()) return; // linha sem valor depositado → ignora
     const v=fdParseValor(vi.value);
     if(!(v>0)){ marca(vi); if(!algumMsg) algumMsg='Informe um valor válido.'; return; }
-    itens.push({ data:l.getAttribute('data-data'), valor:v, valor_recebido:Number(l.getAttribute('data-recebido'))||0 });
+    const rec=Number(l.getAttribute('data-recebido'))||0;
+    if(Math.abs(rec - v) >= 0.005) houveDivergencia=true;
+    itens.push({ data:l.getAttribute('data-data'), valor:v, valor_recebido:rec });
   });
 
   if(!itens.length && !algumMsg){ algumMsg='Informe o valor depositado em ao menos um recebimento.'; }
+
+  // Observação obrigatória quando houver divergência entre fechamento e depositado
+  if(houveDivergencia && !obs){ marca(obsEl); if(!algumMsg) algumMsg='Há divergência entre o valor do fechamento e o depositado. Descreva o motivo na observação.'; }
 
   const fileEl=document.getElementById('cdFile');
   if(!file){ marca(fileEl); if(!algumMsg) algumMsg='Anexe o comprovante do depósito.'; }
@@ -5353,9 +5385,12 @@ async function cdConferirBanco(ini, fim){
     await fdLoadMapEmpresa();                 // loja → empresa (código)
     const contasSant=await cdLoadContasSant();
 
-    const infoPorLoja={};
-    _cdRows.forEach(r=>{ infoPorLoja[r.loja]=(infoPorLoja[r.loja]||0)+(Number(r.valor)||0); });
-    const lojas=Object.keys(infoPorLoja).sort();
+    // ── INFORMADO: só o ÚLTIMO depósito informado de cada loja ──
+    // _cdRows já vem ordenado por data_deposito desc, created_at desc, então a
+    // primeira ocorrência de cada loja é o lançamento mais recente daquela loja.
+    const ultInfoPorLoja={};
+    _cdRows.forEach(r=>{ if(!(r.loja in ultInfoPorLoja)) ultInfoPorLoja[r.loja]=r; });
+    const lojas=Object.keys(ultInfoPorLoja).sort();
 
     const contaIdsPorLoja={}; const todosIds=new Set();
     lojas.forEach(loja=>{
@@ -5368,21 +5403,28 @@ async function cdConferirBanco(ini, fim){
     let creditos=[];
     if(todosIds.size){
       let q=_SB.from('transacoes_santander').select('conta_id,data,valor')
-              .in('conta_id',[...todosIds]).eq('tipo','receita').ilike('descricao','DEP DINHEIRO%');
+              .in('conta_id',[...todosIds]).eq('tipo','receita').ilike('descricao','DEP DINHEIRO%')
+              .order('data',{ascending:false});
       if(ini)    q=q.gte('data',ini);
       if(fimExt) q=q.lte('data',fimExt);
       const { data, error } = await q;
       if(error) throw error;
       creditos=data||[];
     }
-    const somaPorConta={};
-    creditos.forEach(t=>{ somaPorConta[t.conta_id]=(somaPorConta[t.conta_id]||0)+(Number(t.valor)||0); });
+    // ── CAIU NO BANCO: só o ÚLTIMO crédito "DEP DINHEIRO" de cada conta ──
+    // creditos vem ordenado por data desc → a primeira ocorrência por conta é a mais recente.
+    const ultBancoPorConta={};
+    creditos.forEach(t=>{ if(!(t.conta_id in ultBancoPorConta)) ultBancoPorConta[t.conta_id]=t; });
 
     tb.innerHTML=lojas.map(loja=>{
-      const info=infoPorLoja[loja]||0;
+      const rInfo=ultInfoPorLoja[loja];
+      const info=Number(rInfo.valor)||0;        // valor do último depósito informado
       const ids=contaIdsPorLoja[loja]||[];
       const semConta=!ids.length;
-      const banco=ids.reduce((s,id)=>s+(somaPorConta[id]||0),0);
+      // entre as contas Santander da loja, pega o crédito mais recente que caiu
+      let credito=null;
+      ids.forEach(id=>{ const c=ultBancoPorConta[id]; if(c && (!credito || String(c.data)>String(credito.data))) credito=c; });
+      const banco=credito?(Number(credito.valor)||0):0;   // valor do último crédito que caiu
       const dif=info-banco;                     // >0 falta cair; <0 caiu a mais
       const ok=!semConta && Math.abs(dif)<0.005;
       const cor=semConta?'var(--t3)':(ok?'#10B981':(dif>0?'#EF4444':'#F59E0B'));
@@ -5391,10 +5433,12 @@ async function cdConferirBanco(ini, fim){
         : (ok ? `<span style="color:#10B981;font-weight:700">✓ OK</span>`
               : (dif>0 ? `<span style="color:#EF4444;font-weight:700">falta cair</span>`
                        : `<span style="color:#F59E0B;font-weight:700">caiu a mais</span>`));
+      const dtInfo=`<br><span style="font-size:.62rem;color:var(--t3)">${fdFmtData(rInfo.data_deposito)}</span>`;
+      const dtBanco=credito?`<br><span style="font-size:.62rem;color:var(--t3)">${fdFmtData(credito.data)}</span>`:'';
       return `<tr>
         <td>${fdEsc(fdNomeLoja(loja))}</td>
-        <td style="text-align:right;font-family:'DM Mono',monospace">${fdMoney(info)}</td>
-        <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--t2)">${semConta?'—':fdMoney(banco)}</td>
+        <td style="text-align:right;font-family:'DM Mono',monospace">${fdMoney(info)}${dtInfo}</td>
+        <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--t2)">${semConta?'—':(fdMoney(banco)+dtBanco)}</td>
         <td style="text-align:right;font-family:'DM Mono',monospace;color:${cor}">${semConta?'—':fdMoney(dif)}</td>
         <td style="text-align:center">${status}</td>
       </tr>`;
@@ -6347,5 +6391,6 @@ document.querySelectorAll('.twrap').forEach(tw=>{
 });
 
 </script>
+<script src="mobile-caju.js" defer></script>
 </body>
 </html>
