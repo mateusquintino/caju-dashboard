@@ -1,0 +1,116 @@
+# ═══════════════════════════════════════════════════════════════
+# Caju Dashboard — .gitignore
+#
+# Esse arquivo controla o que NÃO vai pro GitHub. A regra de ouro:
+# "se vazar, dá pra causar prejuízo? → entra aqui."
+# ═══════════════════════════════════════════════════════════════
+
+
+# ── CREDENCIAIS E SEGREDOS (NUNCA COMITAR) ───────────────────────
+# .env e variantes — convenção universal para segredos
+.env
+.env.*
+!.env.example
+
+# Chaves de API, certificados, tokens
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+service-account*.json
+service_role*
+*-service-account*.json
+
+# Backups de SQL que possam conter dados reais
+*.sql.bak
+*.dump
+backup*.sql
+
+
+# ── DADOS BANCÁRIOS / FINANCEIROS ────────────────────────────────
+# OFX contém transações de conta corrente — sensível.
+*.ofx
+*.OFX
+
+# Planilhas / exports financeiros locais
+*.xlsx~
+relatorios/
+exports/
+
+
+# ── ARTEFATOS DE BUILD / DEPENDÊNCIAS ────────────────────────────
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.venv/
+venv/
+env/
+
+
+# ── EDITORES / IDE / OS ──────────────────────────────────────────
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# IntelliJ / PyCharm / WebStorm
+.idea/
+*.iml
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*.~lock.*
+
+
+# ── LOGS E TEMPORÁRIOS ───────────────────────────────────────────
+*.log
+logs/
+*.tmp
+*.temp
+.cache/
+
+# Arquivos temporários do Office
+~$*.doc*
+~$*.xls*
+~$*.ppt*
+
+
+# ── ESPECÍFICO DO PROJETO ────────────────────────────────────────
+# Sessões locais do Claude / Cowork
+local_*/
+.claude/
+.anthropic/
+
+# ── COMPROVANTES PROXY ───────────────────────────────────────────
+# contas.json guarda client_secret e senha de certificado — NUNCA comitar.
+comprovantes-proxy/proxy-python/contas.json
+comprovantes-proxy/proxy-python/_pdf_tmp/
+comprovantes-proxy/proxy-python/proxy.log
+# (os .env, .pfx, .crt, .key e .venv já caem nas regras globais acima)
