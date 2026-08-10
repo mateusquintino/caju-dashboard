@@ -1,7 +1,7 @@
 /* Caju · service worker mínimo.
    Cacheia só o shell (HTML/CSS/JS/fontes). Dados do Supabase NUNCA são
    cacheados — saldo velho em cache seria pior que ficar offline. */
-var CACHE = 'caju-shell-v2';
+var CACHE = 'caju-shell-v3';
 var SHELL = ['./', './index.html', './mobile-caju.css', './mobile-caju.js'];
 
 self.addEventListener('install', function(e){
